@@ -57,7 +57,7 @@ int main() {
     // Read IFC, generate geometry and VAO
     auto ifcModel = std::make_shared<BuildingModel>();
     auto reader = std::make_shared<ReaderSTEP>();
-    reader->loadModelFromFile( "example.ifc", ifcModel );
+    reader->loadModelFromFile( "example2.ifc", ifcModel );
     auto geometry = ifcpp::GenerateGeometry( ifcModel );
     std::vector<float> vbo;
     std::vector<unsigned int> ibo;
@@ -79,6 +79,7 @@ int main() {
     glfwInit();
     glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, 3 );
     glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, 3 );
+    glfwWindowHint (GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     glfwWindowHint( GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE );
     GLFWwindow* window = glfwCreateWindow( 800, 800, "ifcpp-example", nullptr, nullptr );
     if( window == nullptr ) {
