@@ -7,9 +7,11 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/matrix.hpp>
 
-#include <ifcpp/Geometry/Geometry.h>
 #include <ifcpp/Model/BuildingModel.h>
 #include <ifcpp/Reader/ReaderSTEP.h>
+
+#include <ifcpp/Geometry/Adapter.h>
+#include <ifcpp/Geometry/GeometryGenerator.h>
 
 
 const char* vertexSource = "#version 330                                                               \n"
@@ -57,29 +59,55 @@ int main() {
     // Read IFC, generate geometry and VAO
     auto ifcModel = std::make_shared<BuildingModel>();
     auto reader = std::make_shared<ReaderSTEP>();
-    reader->loadModelFromFile( "example2.ifc", ifcModel );
-    auto geometry = ifcpp::GenerateGeometry( ifcModel );
+    reader->loadModelFromFile( "2.ifc", ifcModel );
+
+
+    auto adapter = std::make_shared<ifcpp::Adapter>();
+
+    auto parameters = std::make_shared<ifcpp::Parameters>( ifcpp::Parameters {
+        1e-6,
+        14,
+        5,
+        1000,
+        4,
+    } );
+    auto geomUtils = std::make_shared<ifcpp::GeomUtils<csgjscpp::Vector>>( parameters );
+    auto primitivesConverter = std::make_shared<ifcpp::PrimitivesConverter<csgjscpp::Vector>>();
+    auto splineConverter = std::make_shared<ifcpp::SplineConverter<csgjscpp::Vector>>( primitivesConverter, geomUtils, parameters );
+    auto curveConverter = std::make_shared<ifcpp::CurveConverter<csgjscpp::Vector>>( primitivesConverter, geomUtils, splineConverter, parameters );
+    auto extruder = std::make_shared<ifcpp::Extruder<csgjscpp::Vector>>( geomUtils, parameters );
+    auto profileConverter = std::make_shared<ifcpp::ProfileConverter<csgjscpp::Vector>>( curveConverter, geomUtils, primitivesConverter, parameters );
+    auto geometryConverter = std::make_shared<ifcpp::GeometryConverter<csgjscpp::Vector>>( curveConverter, primitivesConverter, splineConverter, geomUtils,
+                                                                                           extruder, profileConverter, parameters );
+    auto solidConverter = std::make_shared<ifcpp::SolidConverter<ifcpp::Adapter>>( primitivesConverter, curveConverter, profileConverter, extruder,
+                                                                                   geometryConverter, adapter, geomUtils, parameters );
+    auto geometryGenerator =
+        std::make_shared<ifcpp::GeometryGenerator<ifcpp::Adapter>>( ifcModel, adapter, curveConverter, extruder, geometryConverter, geomUtils,
+                                                                    primitivesConverter, profileConverter, solidConverter, splineConverter, parameters );
+
+    // auto generator = std::make_shared<ifcpp::GeometryGenerator<ifcpp::Adapter>>(ifcModel, adapter);
+    const auto entities = geometryGenerator->GenerateGeometry();
     std::vector<float> vbo;
     std::vector<unsigned int> ibo;
     std::vector<unsigned int> cbo;
-    for( const auto& g: geometry ) {
-        for( const auto& m: g->m_meshes ) {
-            for( const auto& i: m.indices ) {
-                ibo.push_back( i + vbo.size() / 3 );
-            }
-            for( const auto& v: m.vertices ) {
-                vbo.push_back( v.pos.x );
-                vbo.push_back( v.pos.y );
-                vbo.push_back( v.pos.z );
-                cbo.push_back( m.color );
-            }
-        }
-    }
-    // Create window
+     for( const auto& e: entities ) {
+         for( const auto& p: e.m_polygons ) {
+             for( int i = 0; i < p.vertices.size(); i++ ) {
+                 ibo.push_back( i + vbo.size() / 3 );
+             }
+             for( const auto& v: p.vertices ) {
+                 vbo.push_back( v.pos.x );
+                 vbo.push_back( v.pos.y );
+                 vbo.push_back( v.pos.z );
+                 cbo.push_back( (255 << 24) | (255 << 16) | (255 << 8) | (255) );
+             }
+         }
+     }
+    //  Create window
     glfwInit();
     glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, 3 );
     glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, 3 );
-    glfwWindowHint (GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+    glfwWindowHint( GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE );
     glfwWindowHint( GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE );
     GLFWwindow* window = glfwCreateWindow( 800, 800, "ifcpp-example", nullptr, nullptr );
     if( window == nullptr ) {
