@@ -1,0 +1,22 @@
+# Format Style Options - Created with Clang Power Tools
+---
+BasedOnStyle: WebKit
+AlignAfterOpenBracket: Align
+AlignConsecutiveMacros: true
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+AllowShortBlocksOnASingleLine: false
+AllowShortFunctionsOnASingleLine: false
+AlwaysBreakTemplateDeclarations: Yes
+BreakBeforeBinaryOperators: None
+BreakBeforeBraces: Attach
+ColumnLimit: 160
+MaxEmptyLinesToKeep: 2
+SpaceAfterTemplateKeyword: false
+SpaceBeforeParens: Never
+SpaceBeforeRangeBasedForLoopColon: false
+SpaceInEmptyBlock: false
+SpacesInConditionalStatement: true
+SpacesInParentheses: true
+SpacesInSquareBrackets: true
+...
