@@ -14,5 +14,8 @@ find_package( OpenGL REQUIRED )
 set( SOURCES
         src/main.cpp )
 
+set( HEADERS
+        src/Adapter.h )
+
 add_executable( ${PROJECT_NAME} ${SOURCES} )
 target_link_libraries( ${PROJECT_NAME} PRIVATE ${OPENGL_LIBRARY} ifcpp glfw libglew_static glm )

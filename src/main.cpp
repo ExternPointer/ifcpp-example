@@ -2,6 +2,9 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 
+#define CSGJSCPP_IMPLEMENTATION
+#include "csgjs.h"
+
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -10,7 +13,7 @@
 #include <ifcpp/Model/BuildingModel.h>
 #include <ifcpp/Reader/ReaderSTEP.h>
 
-#include <ifcpp/Geometry/Adapter.h>
+#include "Adapter.h"
 #include <ifcpp/Geometry/GeometryGenerator.h>
 
 
@@ -59,10 +62,8 @@ int main() {
     // Read IFC, generate geometry and VAO
     auto ifcModel = std::make_shared<BuildingModel>();
     auto reader = std::make_shared<ReaderSTEP>();
-    reader->loadModelFromFile( "5.ifc", ifcModel );
+    reader->loadModelFromFile( "6.ifc", ifcModel );
 
-
-    auto adapter = std::make_shared<ifcpp::Adapter>();
 
     auto parameters = std::make_shared<ifcpp::Parameters>( ifcpp::Parameters {
         1e-6,
@@ -71,6 +72,7 @@ int main() {
         100,
         4,
     } );
+    auto adapter = std::make_shared<ifcpp::Adapter>();
     auto geomUtils = std::make_shared<ifcpp::GeomUtils<csgjscpp::Vector>>( parameters );
     auto primitivesConverter = std::make_shared<ifcpp::PrimitivesConverter<csgjscpp::Vector>>();
     auto splineConverter = std::make_shared<ifcpp::SplineConverter<csgjscpp::Vector>>( primitivesConverter, geomUtils, parameters );
@@ -87,6 +89,7 @@ int main() {
 
     // auto generator = std::make_shared<ifcpp::GeometryGenerator<ifcpp::Adapter>>(ifcModel, adapter);
     const auto entities = geometryGenerator->GenerateGeometry();
+    glm::vec3 center( 0, 0, 0 );
     std::vector<float> vbo;
     std::vector<unsigned int> ibo;
     std::vector<unsigned int> cbo;
@@ -96,6 +99,7 @@ int main() {
                  ibo.push_back( i + vbo.size() / 3 );
              }
              for( const auto& v: p.vertices ) {
+                 center = center + glm::vec3( v.pos.x, v.pos.y, v.pos.z );
                  vbo.push_back( v.pos.x );
                  vbo.push_back( v.pos.y );
                  vbo.push_back( v.pos.z );
@@ -103,6 +107,7 @@ int main() {
              }
          }
      }
+     center = center / (float)(vbo.size() / 3);
     //  Create window
     glfwInit();
     glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, 3 );
@@ -161,7 +166,7 @@ int main() {
     glBufferData( GL_ELEMENT_ARRAY_BUFFER, (int)( sizeof( unsigned int ) * ibo.size() ), &ibo[ 0 ], GL_STATIC_DRAW );
     glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
     // Camera position
-    glm::vec3 position( 10, 10, 10 );
+    glm::vec3 position( center );
     glm::vec3 viewDirection = glm::normalize( glm::vec3 { -1, -1, -1 } );
     // OpenGL setup
     glClearColor( 0.07f, 0.13f, 0.17f, 1.0f );
