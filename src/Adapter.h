@@ -96,28 +96,93 @@ public:
         return result;
     }
 
-    inline std::vector<TPolygon> ComputeUnion( const std::vector<TPolygon>& operand1, const std::vector<TPolygon>& operand2 ) {
+    inline std::vector<TPolygon> ComputeUnion( std::vector<TPolygon> operand1, std::vector<TPolygon> operand2 ) {
         if( operand1.empty() ) {
             return operand2;
         }
         if( operand2.empty() ) {
             return operand1;
         }
-        return csgjscpp::modeltopolygons( csgjscpp::csgunion( csgjscpp::modelfrompolygons( operand1 ), csgjscpp::modelfrompolygons( operand2 ) ) );
+        const auto [ o, s ] = this->MoveOperandsToOrigin( operand1, operand2 );
+        auto result = csgjscpp::modeltopolygons( csgjscpp::csgunion( csgjscpp::modelfrompolygons( operand1 ), csgjscpp::modelfrompolygons( operand2 ) ) );
+        this->RestoreResult( result, o, s );
+        return result;
     }
 
-    inline std::vector<TPolygon> ComputeIntersection( const std::vector<TPolygon>& operand1, const std::vector<TPolygon>& operand2 ) {
+    inline std::vector<TPolygon> ComputeIntersection( std::vector<TPolygon> operand1, std::vector<TPolygon> operand2 ) {
         if( operand1.empty() || operand2.empty() ) {
             return {};
         }
-        return csgjscpp::modeltopolygons( csgjscpp::csgintersection( csgjscpp::modelfrompolygons( operand1 ), csgjscpp::modelfrompolygons( operand2 ) ) );
+        const auto [ o, s ] = this->MoveOperandsToOrigin( operand1, operand2 );
+        auto result = csgjscpp::modeltopolygons( csgjscpp::csgintersection( csgjscpp::modelfrompolygons( operand1 ), csgjscpp::modelfrompolygons( operand2 ) ) );
+        this->RestoreResult( result, o, s );
+        return result;
     }
 
-    inline std::vector<TPolygon> ComputeDifference( const std::vector<TPolygon>& operand1, const std::vector<TPolygon>& operand2 ) {
+    inline std::vector<TPolygon> ComputeDifference( std::vector<TPolygon> operand1, std::vector<TPolygon> operand2 ) {
         if( operand1.empty() || operand2.empty() ) {
             return operand1;
         }
-        return csgjscpp::modeltopolygons( csgjscpp::csgsubtract( csgjscpp::modelfrompolygons( operand1 ), csgjscpp::modelfrompolygons( operand2 ) ) );
+        const auto [ o, s ] = this->MoveOperandsToOrigin( operand1, operand2 );
+        auto result = csgjscpp::modeltopolygons( csgjscpp::csgsubtract( csgjscpp::modelfrompolygons( operand1 ), csgjscpp::modelfrompolygons( operand2 ) ) );
+        this->RestoreResult( result, o, s );
+        return result;
+    }
+
+private:
+    //         offset            scale
+    std::tuple<csgjscpp::Vector, float> MoveOperandsToOrigin( std::vector<TPolygon>& operand1, std::vector<TPolygon>& operand2 ) {
+        csgjscpp::Vector min(std::numeric_limits<float>::max(),std::numeric_limits<float>::max(),std::numeric_limits<float>::max());
+        csgjscpp::Vector max(-std::numeric_limits<float>::max(),-std::numeric_limits<float>::max(),-std::numeric_limits<float>::max());
+
+        for( const auto& p: operand1 ) {
+            for( const auto v: p.vertices ) {
+                const auto pos = v.pos;
+                min.x = std::min( min.x, pos.x );
+                min.y = std::min( min.y, pos.y );
+                min.z = std::min( min.z, pos.z );
+                max.x = std::max( max.x, pos.x );
+                max.y = std::max( max.y, pos.y );
+                max.z = std::max( max.z, pos.z );
+            }
+        }
+        for( const auto& p: operand2 ) {
+            for( const auto& v: p.vertices ) {
+                const auto& pos = v.pos;
+                min.x = std::min( min.x, pos.x );
+                min.y = std::min( min.y, pos.y );
+                min.z = std::min( min.z, pos.z );
+                max.x = std::max( max.x, pos.x );
+                max.y = std::max( max.y, pos.y );
+                max.z = std::max( max.z, pos.z );
+            }
+        }
+
+        const auto offset = -(min + max) * 0.5f;
+        const auto scale = sqrtf(3) / csgjscpp::length(max - min);
+
+        for( auto& p: operand1 ) {
+            for( auto& v: p.vertices ) {
+                v.pos = ( v.pos + offset ) * scale;
+            }
+        }
+        for( auto& p: operand2 ) {
+            for( auto& v: p.vertices ) {
+                v.pos = ( v.pos + offset ) * scale;
+            }
+        }
+
+        return { offset, scale };
+    }
+
+    void RestoreResult( std::vector<TPolygon>& result, csgjscpp::Vector offset, float scale ) {
+        scale = 1.0f / scale;
+        offset = -offset;
+        for( auto& p: result ) {
+            for( auto& v: p.vertices ) {
+                v.pos = v.pos * scale + offset;
+            }
+        }
     }
 };
 
