@@ -62,7 +62,7 @@ int main() {
     // Read IFC, generate geometry and VAO
     auto ifcModel = std::make_shared<BuildingModel>();
     auto reader = std::make_shared<ReaderSTEP>();
-    reader->loadModelFromFile( "example.ifc", ifcModel );
+    reader->loadModelFromFile( "buero.ifc", ifcModel );
 
 
     auto parameters = std::make_shared<ifcpp::Parameters>( ifcpp::Parameters {
@@ -81,33 +81,47 @@ int main() {
     auto profileConverter = std::make_shared<ifcpp::ProfileConverter<csgjscpp::Vector>>( curveConverter, geomUtils, primitivesConverter, parameters );
     auto geometryConverter = std::make_shared<ifcpp::GeometryConverter<csgjscpp::Vector>>( curveConverter, primitivesConverter, splineConverter, geomUtils,
                                                                                            extruder, profileConverter, parameters );
+    auto styleConverter = std::make_shared<ifcpp::StyleConverter>();
     auto solidConverter = std::make_shared<ifcpp::SolidConverter<ifcpp::Adapter>>( primitivesConverter, curveConverter, profileConverter, extruder,
-                                                                                   geometryConverter, adapter, geomUtils, parameters );
-    auto geometryGenerator =
-        std::make_shared<ifcpp::GeometryGenerator<ifcpp::Adapter>>( ifcModel, adapter, curveConverter, extruder, geometryConverter, geomUtils,
-                                                                    primitivesConverter, profileConverter, solidConverter, splineConverter, parameters );
+                                                                                   geometryConverter, adapter, geomUtils, styleConverter, parameters );
+    auto geometryGenerator = std::make_shared<ifcpp::GeometryGenerator<ifcpp::Adapter>>( ifcModel, adapter, curveConverter, extruder, geometryConverter,
+                                                                                         geomUtils, primitivesConverter, profileConverter, solidConverter,
+                                                                                         splineConverter, styleConverter, parameters );
 
     // auto generator = std::make_shared<ifcpp::GeometryGenerator<ifcpp::Adapter>>(ifcModel, adapter);
     const auto entities = geometryGenerator->GenerateGeometry();
     glm::vec3 center( 0, 0, 0 );
     std::vector<float> vbo;
     std::vector<unsigned int> ibo;
+    std::vector<unsigned int> iboTransparent;
     std::vector<unsigned int> cbo;
-     for( const auto& e: entities ) {
-         for( const auto& p: e.m_polygons ) {
-             for( int i = 0; i < p.vertices.size(); i++ ) {
-                 ibo.push_back( i + vbo.size() / 3 );
-             }
-             for( const auto& v: p.vertices ) {
-                 center = center + glm::vec3( v.pos.x, v.pos.y, v.pos.z );
-                 vbo.push_back( v.pos.x );
-                 vbo.push_back( v.pos.y );
-                 vbo.push_back( v.pos.z );
-                 cbo.push_back( (255 << 24) | (255 << 16) | (255 << 8) | (255) );
-             }
-         }
-     }
-     center = center / (float)(vbo.size() / 3);
+    for( const auto& e: entities ) {
+        for( const auto& p: e.m_polygons ) {
+            if( p.vertices.size() != 3 || p.vertices[ 0 ].col == 0 && p.vertices[ 1 ].col == 0 && p.vertices[ 2 ].col == 0 ) {
+                // WTF
+                continue;
+            }
+            if( ( p.vertices[ 0 ].col >> 24 ) == 255 && ( p.vertices[ 1 ].col >> 24 ) == 255 && ( p.vertices[ 2 ].col >> 24 ) == 255 ) {
+                for( int i = 0; i < p.vertices.size(); i++ ) {
+                    ibo.push_back( i + vbo.size() / 3 );
+                }
+            } else {
+                for( int i = 0; i < p.vertices.size(); i++ ) {
+                    iboTransparent.push_back( i + vbo.size() / 3 );
+                }
+            }
+            for( const auto& v: p.vertices ) {
+                center = center + glm::vec3( v.pos.x, v.pos.y, v.pos.z );
+                vbo.push_back( v.pos.x );
+                vbo.push_back( v.pos.y );
+                vbo.push_back( v.pos.z );
+                cbo.push_back( v.col );
+            }
+        }
+    }
+    int transparentStartIdx = ibo.size();
+    std::copy( iboTransparent.begin(), iboTransparent.end(), std::back_inserter( ibo ) );
+    center = center / (float)( vbo.size() / 3 );
     //  Create window
     glfwInit();
     glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, 3 );
@@ -188,7 +202,15 @@ int main() {
         glEnableVertexAttribArray( 1 );
         glVertexAttribPointer( 1, 4, GL_UNSIGNED_BYTE, GL_TRUE, 0, nullptr );
         glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, iboId );
-        glDrawElements( GL_TRIANGLES, (int)ibo.size(), GL_UNSIGNED_INT, nullptr );
+        glDrawElements( GL_TRIANGLES, transparentStartIdx, GL_UNSIGNED_INT, nullptr );
+
+        if( !iboTransparent.empty() ) {
+            glEnable( GL_BLEND );
+            glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
+            glDrawElements( GL_TRIANGLES, ibo.size() - transparentStartIdx, GL_UNSIGNED_INT, (void*)( transparentStartIdx * sizeof( unsigned int ) ) );
+            glDisable( GL_BLEND );
+        }
+
         glBindBuffer( GL_ARRAY_BUFFER, 0 );
         glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
         glDisableVertexAttribArray( 0 );

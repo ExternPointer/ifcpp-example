@@ -5,6 +5,7 @@
 #include "csgjs.h"
 #include "earcut.hpp"
 #include "ifcpp/Geometry/Matrix.h"
+#include "ifcpp/Geometry/StylesConverter.h"
 #include "ifcpp/Geometry/VectorAdapter.h"
 #include "ifcpp/Ifc/IfcObjectDefinition.h"
 
@@ -13,6 +14,7 @@ namespace ifcpp {
 class Polyline {
 public:
     std::vector<csgjscpp::Vector> m_points;
+    int m_color = 0;
 };
 
 class Entity {
@@ -59,6 +61,27 @@ public:
             for( auto& v: p.m_points ) {
                 matrix.Transform( &v );
             }
+        }
+    }
+
+    inline void ApplyStyle( std::vector<TPolygon>* polygons, const std::shared_ptr<Style> &style, bool rewrite = false ) {
+        for( auto& p: *polygons ) {
+            for( auto& v: p.vertices ) {
+                if( !rewrite && v.col != 0) {
+                    continue;
+                }
+                v.col = (int)( 255.0f * style->m_color.a ) << 24 | (int)( 255.0f * style->m_color.b ) << 16 | (int)( 255.0f * style->m_color.g ) << 8 |
+                    (int)( 255.0f * style->m_color.r );
+            }
+        }
+    }
+    inline void ApplyStyle( std::vector<TPolyline>* polylines, const std::shared_ptr<Style>& style, bool rewrite = false ) {
+        for( auto& p: *polylines ) {
+            if( !rewrite && p.m_color != 0) {
+                continue;
+            }
+            p.m_color = (int)( 255.0f * style->m_color.a ) << 24 | (int)( 255.0f * style->m_color.b ) << 16 | (int)( 255.0f * style->m_color.g ) << 8 |
+                (int)( 255.0f * style->m_color.r );
         }
     }
 
@@ -114,7 +137,8 @@ public:
             return {};
         }
         const auto [ o, s ] = this->MoveOperandsToOrigin( operand1, operand2 );
-        auto result = csgjscpp::modeltopolygons( csgjscpp::csgintersection( csgjscpp::modelfrompolygons( operand1 ), csgjscpp::modelfrompolygons( operand2 ) ) );
+        auto result =
+            csgjscpp::modeltopolygons( csgjscpp::csgintersection( csgjscpp::modelfrompolygons( operand1 ), csgjscpp::modelfrompolygons( operand2 ) ) );
         this->RestoreResult( result, o, s );
         return result;
     }
@@ -132,8 +156,8 @@ public:
 private:
     //         offset            scale
     std::tuple<csgjscpp::Vector, float> MoveOperandsToOrigin( std::vector<TPolygon>& operand1, std::vector<TPolygon>& operand2 ) {
-        csgjscpp::Vector min(std::numeric_limits<float>::max(),std::numeric_limits<float>::max(),std::numeric_limits<float>::max());
-        csgjscpp::Vector max(-std::numeric_limits<float>::max(),-std::numeric_limits<float>::max(),-std::numeric_limits<float>::max());
+        csgjscpp::Vector min( std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max() );
+        csgjscpp::Vector max( -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max() );
 
         for( const auto& p: operand1 ) {
             for( const auto v: p.vertices ) {
@@ -158,8 +182,8 @@ private:
             }
         }
 
-        const auto offset = -(min + max) * 0.5f;
-        const auto scale = sqrtf(3) / csgjscpp::length(max - min);
+        const auto offset = -( min + max ) * 0.5f;
+        const auto scale = sqrtf( 3 ) / csgjscpp::length( max - min );
 
         for( auto& p: operand1 ) {
             for( auto& v: p.vertices ) {
