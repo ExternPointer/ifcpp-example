@@ -147,7 +147,7 @@ inline uint32_t lerp(uint32_t a, uint32_t b, CSGJSCPP_REAL v) {
 struct Vertex {
     Vector   pos;
     Vector   normal;
-    uint32_t col = 0;
+    uint32_t col;
 };
 
 inline bool operator==(const Vertex &a, const Vertex &b) {
