@@ -62,7 +62,7 @@ int main() {
     // Read IFC, generate geometry and VAO
     auto ifcModel = std::make_shared<BuildingModel>();
     auto reader = std::make_shared<ReaderSTEP>();
-    reader->loadModelFromFile( "3.ifc", ifcModel );
+    reader->loadModelFromFile( "buero.ifc", ifcModel );
 
 
     auto parameters = std::make_shared<ifcpp::Parameters>( ifcpp::Parameters {
@@ -192,6 +192,8 @@ int main() {
     glClearColor( 0.07f, 0.13f, 0.17f, 1.0f );
     glEnable( GL_DEPTH_TEST );
     glEnable( GL_CULL_FACE );
+//    glDisable( GL_CULL_FACE );
+//    glDepthFunc(GL_LEQUAL);
     // Main loop
     while( !glfwWindowShouldClose( window ) ) {
         // Render VAO
@@ -211,12 +213,12 @@ int main() {
 
         glDrawElements( GL_TRIANGLES, transparentStartIdx, GL_UNSIGNED_INT, nullptr );
 
-        if( !iboTransparent.empty() ) {
-            glEnable( GL_BLEND );
-            glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
-            glDrawElements( GL_TRIANGLES, ibo.size() - transparentStartIdx, GL_UNSIGNED_INT, (void*)( transparentStartIdx * sizeof( unsigned int ) ) );
-            glDisable( GL_BLEND );
-        }
+//        if( !iboTransparent.empty() ) {
+//            glEnable( GL_BLEND );
+//            glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
+//            glDrawElements( GL_TRIANGLES, ibo.size() - transparentStartIdx, GL_UNSIGNED_INT, (void*)( transparentStartIdx * sizeof( unsigned int ) ) );
+//            glDisable( GL_BLEND );
+//        }
 
         glBindBuffer( GL_ARRAY_BUFFER, 0 );
         glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
@@ -237,20 +239,26 @@ int main() {
         if( glfwGetKey( window, GLFW_KEY_D ) ) {
             position += rightDir * 0.05f;
         }
+        if( glfwGetKey( window, GLFW_KEY_LEFT_SHIFT ) ) {
+            position += glm::vec3( 0, 0, 1 ) * 0.05f;
+        }
+        if( glfwGetKey( window, GLFW_KEY_LEFT_CONTROL ) ) {
+            position -= glm::vec3( 0, 0, 1 ) * 0.05f;
+        }
         if( glfwGetKey( window, GLFW_KEY_LEFT ) ) {
-            glm::mat4 rot = glm::rotate( glm::mat4( 1.0f ), glm::radians( 0.1f ), { 0, 0, 1 } );
+            glm::mat4 rot = glm::rotate( glm::mat4( 1.0f ), glm::radians( 0.5f ), { 0, 0, 1 } );
             viewDirection = rot * glm::vec4( viewDirection.x, viewDirection.y, viewDirection.z, 0.0f );
         }
         if( glfwGetKey( window, GLFW_KEY_RIGHT ) ) {
-            glm::mat4 rot = glm::rotate( glm::mat4( 1.0f ), glm::radians( -0.1f ), { 0, 0, 1 } );
+            glm::mat4 rot = glm::rotate( glm::mat4( 1.0f ), glm::radians( -0.5f ), { 0, 0, 1 } );
             viewDirection = rot * glm::vec4( viewDirection.x, viewDirection.y, viewDirection.z, 0.0f );
         }
         if( glfwGetKey( window, GLFW_KEY_UP ) ) {
-            glm::mat4 rot = glm::rotate( glm::mat4( 1.0f ), glm::radians( 0.1f ), rightDir );
+            glm::mat4 rot = glm::rotate( glm::mat4( 1.0f ), glm::radians( 0.5f ), rightDir );
             viewDirection = rot * glm::vec4( viewDirection.x, viewDirection.y, viewDirection.z, 0.0f );
         }
         if( glfwGetKey( window, GLFW_KEY_DOWN ) ) {
-            glm::mat4 rot = glm::rotate( glm::mat4( 1.0f ), glm::radians( -0.1f ), rightDir );
+            glm::mat4 rot = glm::rotate( glm::mat4( 1.0f ), glm::radians( -0.5f ), rightDir );
             viewDirection = rot * glm::vec4( viewDirection.x, viewDirection.y, viewDirection.z, 0.0f );
         }
         glfwSwapBuffers( window );
