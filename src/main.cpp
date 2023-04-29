@@ -62,7 +62,7 @@ int main() {
     // Read IFC, generate geometry and VAO
     auto ifcModel = std::make_shared<BuildingModel>();
     auto reader = std::make_shared<ReaderSTEP>();
-    reader->loadModelFromFile( "buero.ifc", ifcModel );
+    reader->loadModelFromFile( "2.ifc", ifcModel );
 
 
     auto parameters = std::make_shared<ifcpp::Parameters>( ifcpp::Parameters {
@@ -213,12 +213,12 @@ int main() {
 
         glDrawElements( GL_TRIANGLES, transparentStartIdx, GL_UNSIGNED_INT, nullptr );
 
-//        if( !iboTransparent.empty() ) {
-//            glEnable( GL_BLEND );
-//            glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
-//            glDrawElements( GL_TRIANGLES, ibo.size() - transparentStartIdx, GL_UNSIGNED_INT, (void*)( transparentStartIdx * sizeof( unsigned int ) ) );
-//            glDisable( GL_BLEND );
-//        }
+        if( !iboTransparent.empty() ) {
+            glEnable( GL_BLEND );
+            glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
+            glDrawElements( GL_TRIANGLES, ibo.size() - transparentStartIdx, GL_UNSIGNED_INT, (void*)( transparentStartIdx * sizeof( unsigned int ) ) );
+            glDisable( GL_BLEND );
+        }
 
         glBindBuffer( GL_ARRAY_BUFFER, 0 );
         glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );

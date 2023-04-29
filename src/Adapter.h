@@ -58,7 +58,6 @@ public:
     }
 
     inline void Transform( std::vector<TMesh>* meshes, ifcpp::Matrix<TVector> matrix ) {
-        return;
         for( auto& m: *meshes ) {
             for( auto& t: m.m_triangles ) {
                 for( auto& v: t.vertices ) {
@@ -85,22 +84,22 @@ public:
             }
             if( s->m_type == ifcpp::Style::SURFACE_BACK ) {
                 style = s;
-                //                for( auto& m: *meshes ) {
-                //                    for( auto& t: m.m_triangles ) {
-                //                        t.flip();
-                //                    }
-                //                }
+                for( auto& m: *meshes ) {
+                    for( auto& t: m.m_triangles ) {
+                        t.flip();
+                    }
+                }
                 break;
             }
             if( s->m_type == ifcpp::Style::SURFACE_BOTH ) {
                 style = s;
-                //                for( auto& m: *meshes ) {
-                //                    auto triangles = m.m_triangles;
-                //                    for( auto& t: triangles ) {
-                //                        t.flip();
-                //                    }
-                //                    std::copy( triangles.begin(), triangles.end(), std::back_inserter( m.m_triangles ) );
-                //                }
+                for( auto& m: *meshes ) {
+                    auto triangles = m.m_triangles;
+                    for( auto& t: triangles ) {
+                        t.flip();
+                    }
+                    std::copy( triangles.begin(), triangles.end(), std::back_inserter( m.m_triangles ) );
+                }
                 break;
             }
         }
@@ -134,7 +133,7 @@ public:
     }
 
     bool pointInTriangle( csgjscpp::Vector a, csgjscpp::Vector b, csgjscpp::Vector c, csgjscpp::Vector p ) {
-        float t = 1e-1;
+        float t = 1e-6;
         return ( c.x - p.x ) * ( a.y - p.y ) - t >= ( a.x - p.x ) * ( c.y - p.y ) && ( a.x - p.x ) * ( b.y - p.y ) - t >= ( b.x - p.x ) * ( a.y - p.y ) &&
             ( b.x - p.x ) * ( c.y - p.y ) - t >= ( c.x - p.x ) * ( b.y - p.y );
     }
@@ -144,17 +143,11 @@ public:
 //            // WTF, TODO: Log error
 //            return {};
 //        }
-//        if( csgjscpp::lengthsquared(loop[0] - loop[loop.size() - 1] ) > 1e-3 ) {
-//            loop.push_back( loop[ 0 ] );
-//        }
 //        TVector normal( 0, 0, 0 );
 //        TVector origin = loop[ 0 ];
 //
 //        for( int i = 1; i < loop.size() - 1; i++ ) {
 //            normal = normal + csgjscpp::cross( ( loop[ i - 1 ] - loop[ i ] ), ( loop[ i + 1 ] - loop[ i ] ) );
-//        }
-//        if( csgjscpp::lengthsquared( normal ) < 1e-6 ) {
-//            return {};
 //        }
 //        normal = -csgjscpp::unit( normal );
 //
@@ -230,7 +223,7 @@ public:
 //                }
 //            }
 //            if( !ok ) {
-//                break;
+//                return result;
 //            }
 //        }
 //
@@ -239,89 +232,72 @@ public:
 //        result.push_back( indices[ 2 ] );
 //
 //        return result;
-//
 
 
+        if( loop.size() < 3 ) {
+            // WTF, TODO: Log error
+            return {};
+        }
 
 
+        TVector normal( 0, 0, 0 );
+        TVector origin = loop[ 0 ];
 
-                if( loop.size() < 3 ) {
-                    // WTF, TODO: Log error
-                    return {};
-                }
+        for( int i = 1; i < loop.size() - 1; i++ ) {
+            normal = normal + csgjscpp::cross( ( loop[ i - 1 ] - loop[ i ] ), ( loop[ i + 1 ] - loop[ i ] ) );
+        }
 
-
-                TVector normal( 0, 0, 0 );
-                TVector origin = loop[ 0 ];
-
-                for( int i = 1; i < loop.size() - 1; i++ ) {
-                    normal = normal + csgjscpp::cross( ( loop[ i - 1 ] - loop[ i ] ), ( loop[ i + 1 ] - loop[ i ] ) );
-                }
-
-                if( csgjscpp::lengthsquared(loop[0] - loop[loop.size() - 1] ) < 1e-3 ) {
-                    loop.pop_back();
-                }
-        //        for( const auto& a: loop ) {
-        //            for( const auto& b: loop ) {
-        //                for( const auto& c: loop ) {
-        //                    const auto n = csgjscpp::cross( b - a, c - b );
-        //                    if( csgjscpp::lengthsquared( n ) > csgjscpp::lengthsquared( normal ) ) {
-        //                        normal = n;
-        //                    }
-        //                }
-        //            }
-        //        }
-                if( csgjscpp::lengthsquared( normal ) < 1e-12 ) {
-                    return {};
-                }
-                normal = csgjscpp::unit( normal );
+        if( csgjscpp::lengthsquared( normal ) < 1e-12 ) {
+            return {};
+        }
+        normal = csgjscpp::unit( normal );
 
 
-                auto right = csgjscpp::cross( { 0.0f, 0.0f, 1.0f }, normal );
-                if( csgjscpp::lengthsquared( right ) < 1e-6 ) {
-                    right = csgjscpp::cross( normal, { 0.0f, -1.0f, 0.0f } );
-                }
+        auto right = csgjscpp::cross( { 0.0f, 0.0f, 1.0f }, normal );
+        if( csgjscpp::lengthsquared( right ) < 1e-6 ) {
+            right = csgjscpp::cross( normal, { 0.0f, -1.0f, 0.0f } );
+        }
 
-                right = csgjscpp::unit( right );
-                auto up = csgjscpp::unit( csgjscpp::cross( normal, right ) );
+        right = csgjscpp::unit( right );
+        auto up = csgjscpp::unit( csgjscpp::cross( normal, right ) );
 
 
-                std::vector<std::vector<std::tuple<float, float>>> polygon;
-                std::vector<std::tuple<float, float>> outer;
+        std::vector<std::vector<std::tuple<float, float>>> polygon;
+        std::vector<std::tuple<float, float>> outer;
 
-                float minx = std::numeric_limits<float>::max();
-                float miny = std::numeric_limits<float>::max();
-                float maxx = -std::numeric_limits<float>::max();
-                float maxy = -std::numeric_limits<float>::max();
+        float minx = std::numeric_limits<float>::max();
+        float miny = std::numeric_limits<float>::max();
+        float maxx = -std::numeric_limits<float>::max();
+        float maxy = -std::numeric_limits<float>::max();
 
-                for( const auto& p: loop ) {
-                    float x = csgjscpp::dot( right, p - origin );
-                    float y = csgjscpp::dot( up, p - origin );
-                    outer.emplace_back( x, y );
-                    minx = std::min( minx, x );
-                    miny = std::min( miny, y );
-                    maxx = std::max( maxx, x );
-                    maxy = std::max( maxy, y );
-                }
-                float ex = maxx - minx;
-                float ey = maxy - miny;
-                float t = 9;
-                float sx = ex > 0 ? t / ex : 1.0f;
-                float sy = ey > 0 ? t / ey : 1.0f;
-                float ox = -minx;
-                float oy = -miny;
+        for( const auto& p: loop ) {
+            float x = csgjscpp::dot( right, p - origin );
+            float y = csgjscpp::dot( up, p - origin );
+            outer.emplace_back( x, y );
+            minx = std::min( minx, x );
+            miny = std::min( miny, y );
+            maxx = std::max( maxx, x );
+            maxy = std::max( maxy, y );
+        }
+        float ex = maxx - minx;
+        float ey = maxy - miny;
+        float t = 9;
+        float sx = ex > 0 ? t / ex : 1.0f;
+        float sy = ey > 0 ? t / ey : 1.0f;
+        float ox = -minx;
+        float oy = -miny;
 
-                for( auto& v: outer ) {
-                    auto [ x, y ] = v;
-                    x = ( x + ox ) * sx;
-                    y = ( y + oy ) * sy;
-                    v = { x, y };
-                }
+        for( auto& v: outer ) {
+            auto [ x, y ] = v;
+            x = ( x + ox ) * sx;
+            y = ( y + oy ) * sy;
+            v = { x, y };
+        }
 
-                polygon.push_back( outer );
-                auto result = mapbox::earcut<int>( polygon );
-                std::reverse( std::begin( result ), std::end( result ) );
-                return result;
+        polygon.push_back( outer );
+        auto result = mapbox::earcut<int>( polygon );
+        std::reverse( std::begin( result ), std::end( result ) );
+        return result;
     }
 
     inline std::vector<TMesh> ComputeUnion( const std::vector<TMesh>& operand1, const std::vector<TMesh>& operand2 ) {
@@ -353,11 +329,18 @@ public:
     }
 
     inline std::vector<TMesh> ComputeDifference( const std::vector<TMesh>& operand1, const std::vector<TMesh>& operand2 ) {
-        return {};
-        auto result = operand1;
-        for( auto& o1: result ) {
-            for( const auto& o2: operand2 ) {
-                o1.m_triangles = this->ComputeDifference( o1.m_triangles, o2.m_triangles );
+        std::vector<TMesh> result;
+        std::vector<TTriangle> operand2Triangles;
+        for( const auto& o: operand2 ) {
+            std::copy( o.m_triangles.begin(), o.m_triangles.end(), std::back_inserter( operand2Triangles ) );
+        }
+//        for( auto& t: operand2Triangles ) {
+//            t.flip();
+//        }
+        for( const auto& o: operand1 ) {
+            const auto triangles = this->ComputeDifference( o.m_triangles, operand2Triangles );
+            if( !triangles.empty() ) {
+                result.push_back( { triangles, o.m_color } );
             }
         }
         return result;
