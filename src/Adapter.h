@@ -155,7 +155,7 @@ public:
                     if( csgjscpp::lengthsquared( n ) > csgjscpp::lengthsquared( normal ) ) {
                         normal = n;
                     }
-                    if( csgjscpp::lengthsquared( normal ) > 1e-3 ) {
+                    if( csgjscpp::lengthsquared( normal ) > 1e-6 ) {
                         goto BREAK;
                     }
                 }
@@ -205,11 +205,13 @@ public:
 //        }
 
         float s = 0.0f;
+        outer.push_back( outer[0] );
         for( int i = 1; i < outer.size(); i++ ) {
             auto [ x1, y1 ] = outer[ i - 1 ];
             auto [ x2, y2 ] = outer[ i ];
             s += ( y1 + y2 ) * 0.5f * ( x1 - x2 );
         }
+        outer.pop_back();
 
 
         polygon.push_back( outer );
@@ -250,10 +252,18 @@ public:
 
     inline std::vector<TMesh> ComputeDifference( std::vector<TMesh> operand1, const std::vector<TMesh>& operand2 ) {
         //return operand2;
+//        for( auto& o1: operand1 ) {
+//            for( const auto& o2: operand2 ) {
+//                o1.m_triangles = this->ComputeDifference( o1.m_triangles, o2.m_triangles );
+//            }
+//        }
+//        return operand1;
+        std::vector<TTriangle> operand2triangles;
+        for( const auto& o: operand2 ) {
+            std::copy( o.m_triangles.begin(), o.m_triangles.end(), std::back_inserter( operand2triangles ) );
+        }
         for( auto& o1: operand1 ) {
-            for( const auto& o2: operand2 ) {
-                o1.m_triangles = this->ComputeDifference( o1.m_triangles, o2.m_triangles );
-            }
+            o1.m_triangles = this->ComputeDifference( o1.m_triangles, operand2triangles );
         }
         return operand1;
     }
@@ -323,7 +333,7 @@ private:
 
         const auto offset = -min + max;
         auto e = max - min;
-        const float t = 9.0f;
+        const float t = 1.0f;
         //        e.x = std::max( std::max( e.x, e.y ), e.z );
         //        e.y = e.z = e.x;
         auto scale = csgjscpp::Vector( e.x > 0 ? t / e.x : 1.0f, e.y > 0 ? t / e.y : 1.0f, e.z > 0 ? t / e.z : 1.0f );

@@ -66,7 +66,7 @@ int main() {
 
 
     auto parameters = std::make_shared<ifcpp::Parameters>( ifcpp::Parameters {
-        1e-3,
+        1e-6,
         14,
         5,
         100,
