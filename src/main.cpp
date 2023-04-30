@@ -56,13 +56,13 @@ const char* fragmentSource = "#version 330                                      
                              "void main() {                                                              \n"
                              "   FragColor = v_color;                                                    \n"
                              "}                                                                          \n";
-
+bool wireframe = false;
 
 int main() {
     // Read IFC, generate geometry and VAO
     auto ifcModel = std::make_shared<BuildingModel>();
     auto reader = std::make_shared<ReaderSTEP>();
-    reader->loadModelFromFile( "2.ifc", ifcModel );
+    reader->loadModelFromFile( "buero.ifc", ifcModel );
 
 
     auto parameters = std::make_shared<ifcpp::Parameters>( ifcpp::Parameters {
@@ -82,11 +82,11 @@ int main() {
     auto profileConverter = std::make_shared<ifcpp::ProfileConverter<csgjscpp::Vector>>( curveConverter, geomUtils, primitivesConverter, parameters );
     auto geometryConverter = std::make_shared<ifcpp::GeometryConverter<csgjscpp::Vector>>( curveConverter, primitivesConverter, splineConverter, geomUtils,
                                                                                            extruder, profileConverter, parameters );
-    auto solidConverter = std::make_shared<ifcpp::SolidConverter<Adapter>>( primitivesConverter, curveConverter, profileConverter, extruder,
-                                                                                   geometryConverter, adapter, geomUtils, styleConverter, parameters );
-    auto geometryGenerator = std::make_shared<ifcpp::GeometryGenerator<Adapter>>( ifcModel, adapter, curveConverter, extruder, geometryConverter,
-                                                                                         geomUtils, primitivesConverter, profileConverter, solidConverter,
-                                                                                         splineConverter, styleConverter, parameters );
+    auto solidConverter = std::make_shared<ifcpp::SolidConverter<Adapter>>( primitivesConverter, curveConverter, profileConverter, extruder, geometryConverter,
+                                                                            adapter, geomUtils, styleConverter, parameters );
+    auto geometryGenerator =
+        std::make_shared<ifcpp::GeometryGenerator<Adapter>>( ifcModel, adapter, curveConverter, extruder, geometryConverter, geomUtils, primitivesConverter,
+                                                             profileConverter, solidConverter, splineConverter, styleConverter, parameters );
 
     // auto generator = std::make_shared<ifcpp::GeometryGenerator<ifcpp::Adapter>>(ifcModel, adapter);
     auto entities = geometryGenerator->GenerateGeometry();
@@ -95,14 +95,14 @@ int main() {
     std::vector<unsigned int> ibo;
     std::vector<unsigned int> iboTransparent;
     std::vector<unsigned int> cbo;
-    for(  auto& e: entities ) {
-        for(  auto& m: e.m_meshes ) {
+    for( auto& e: entities ) {
+        for( auto& m: e.m_meshes ) {
             if( m.m_color == 0 ) {
                 // No material, skip
-                //continue;
+                // continue;
                 m.m_color = 255 << 24 | 255;
             } else {
-                //continue;
+                // continue;
             }
             bool opaque = ( m.m_color >> 24 ) == 255;
             for( const auto& p: m.m_triangles ) {
@@ -192,11 +192,16 @@ int main() {
     glClearColor( 0.07f, 0.13f, 0.17f, 1.0f );
     glEnable( GL_DEPTH_TEST );
     glEnable( GL_CULL_FACE );
-//    glDisable( GL_CULL_FACE );
-//    glDepthFunc(GL_LEQUAL);
+    //    glDisable( GL_CULL_FACE );
+    //    glDepthFunc(GL_LEQUAL);
     // Main loop
     while( !glfwWindowShouldClose( window ) ) {
         // Render VAO
+        if( wireframe ) {
+            glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+        } else {
+            glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+        }
         glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
         glUseProgram( program );
         auto projectionMatrix = glm::perspective( glm::radians( 60.0f ), 800.0f / 800.0f, 0.1f, 500.0f );
@@ -225,8 +230,15 @@ int main() {
         glDisableVertexAttribArray( 0 );
         glDisableVertexAttribArray( 1 );
         glUseProgram( 0 );
+
+
         // Movement
         auto rightDir = glm::normalize( glm::cross( viewDirection, { 0, 0, 1 } ) );
+        glfwSetKeyCallback( window, []( GLFWwindow* window, int key, int scancode, int action, int mods ) {
+            if( key == GLFW_KEY_Z && action == GLFW_PRESS ) {
+                wireframe = !wireframe;
+            }
+        } );
         if( glfwGetKey( window, GLFW_KEY_W ) ) {
             position += viewDirection * 0.05f;
         }
