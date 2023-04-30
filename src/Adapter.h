@@ -155,20 +155,19 @@ public:
                     if( csgjscpp::lengthsquared( n ) > csgjscpp::lengthsquared( normal ) ) {
                         normal = n;
                     }
+                    if( csgjscpp::lengthsquared( normal ) > 1e-3 ) {
+                        goto BREAK;
+                    }
                 }
             }
         }
-
-
-
-        normal = -csgjscpp::unit( normal );
-
+        BREAK:
+        normal = csgjscpp::unit( normal );
 
         auto right = csgjscpp::cross( { 0.0f, 0.0f, 1.0f }, normal );
         if( csgjscpp::lengthsquared( right ) < 1e-6 ) {
             right = csgjscpp::cross( normal, { 0.0f, -1.0f, 0.0f } );
         }
-
         right = csgjscpp::unit( right );
         auto up = csgjscpp::unit( csgjscpp::cross( normal, right ) );
 
@@ -176,38 +175,48 @@ public:
         std::vector<std::vector<std::tuple<float, float>>> polygon;
         std::vector<std::tuple<float, float>> outer;
 
-        float minx = std::numeric_limits<float>::max();
-        float miny = std::numeric_limits<float>::max();
-        float maxx = -std::numeric_limits<float>::max();
-        float maxy = -std::numeric_limits<float>::max();
-
+//        float minx = std::numeric_limits<float>::max();
+//        float miny = std::numeric_limits<float>::max();
+//        float maxx = -std::numeric_limits<float>::max();
+//        float maxy = -std::numeric_limits<float>::max();
+//
         for( const auto& p: loop ) {
             float x = csgjscpp::dot( right, p - origin );
             float y = csgjscpp::dot( up, p - origin );
             outer.emplace_back( x, y );
-            minx = std::min( minx, x );
-            miny = std::min( miny, y );
-            maxx = std::max( maxx, x );
-            maxy = std::max( maxy, y );
+//            minx = std::min( minx, x );
+//            miny = std::min( miny, y );
+//            maxx = std::max( maxx, x );
+//            maxy = std::max( maxy, y );
         }
-        float ex = maxx - minx;
-        float ey = maxy - miny;
-        float t = 9;
-        float sx = ex > 0 ? t / ex : 1.0f;
-        float sy = ey > 0 ? t / ey : 1.0f;
-        float ox = -minx;
-        float oy = -miny;
+//        float ex = maxx - minx;
+//        float ey = maxy - miny;
+//        float t = 9;
+//        float sx = ex > 0 ? t / ex : 1.0f;
+//        float sy = ey > 0 ? t / ey : 1.0f;
+//        float ox = -minx;
+//        float oy = -miny;
+//
+//        for( auto& v: outer ) {
+//            auto [ x, y ] = v;
+//            x = ( x + ox ) * sx;
+//            y = ( y + oy ) * sy;
+//            v = { x, y };
+//        }
 
-        for( auto& v: outer ) {
-            auto [ x, y ] = v;
-            x = ( x + ox ) * sx;
-            y = ( y + oy ) * sy;
-            v = { x, y };
+        float s = 0.0f;
+        for( int i = 1; i < outer.size(); i++ ) {
+            auto [ x1, y1 ] = outer[ i - 1 ];
+            auto [ x2, y2 ] = outer[ i ];
+            s += ( y1 + y2 ) * 0.5f * ( x1 - x2 );
         }
+
 
         polygon.push_back( outer );
         auto result = mapbox::earcut<int>( polygon );
-        std::reverse( std::begin( result ), std::end( result ) );
+        if( s < 0 ) {
+            std::reverse( std::begin( result ), std::end( result ) );
+        }
         return result;
     }
 
@@ -240,6 +249,7 @@ public:
     }
 
     inline std::vector<TMesh> ComputeDifference( std::vector<TMesh> operand1, const std::vector<TMesh>& operand2 ) {
+        //return operand2;
         for( auto& o1: operand1 ) {
             for( const auto& o2: operand2 ) {
                 o1.m_triangles = this->ComputeDifference( o1.m_triangles, o2.m_triangles );
@@ -288,17 +298,17 @@ private:
         csgjscpp::Vector min( std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max() );
         csgjscpp::Vector max( -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max() );
 
-//        for( const auto& p: operand1 ) {
-//            for( const auto v: p.vertices ) {
-//                const auto pos = v.pos;
-//                min.x = std::min( min.x, pos.x );
-//                min.y = std::min( min.y, pos.y );
-//                min.z = std::min( min.z, pos.z );
-//                max.x = std::max( max.x, pos.x );
-//                max.y = std::max( max.y, pos.y );
-//                max.z = std::max( max.z, pos.z );
-//            }
-//        }
+        for( const auto& p: operand1 ) {
+            for( const auto v: p.vertices ) {
+                const auto pos = v.pos;
+                min.x = std::min( min.x, pos.x );
+                min.y = std::min( min.y, pos.y );
+                min.z = std::min( min.z, pos.z );
+                max.x = std::max( max.x, pos.x );
+                max.y = std::max( max.y, pos.y );
+                max.z = std::max( max.z, pos.z );
+            }
+        }
         for( const auto& p: operand2 ) {
             for( const auto& v: p.vertices ) {
                 const auto& pos = v.pos;
