@@ -252,12 +252,12 @@ int main() {
         if( glfwGetKey( window, GLFW_KEY_D ) ) {
             position += rightDir * 0.05f;
         }
-//        if( glfwGetKey( window, GLFW_KEY_LEFT_SHIFT ) ) {
-//            position += glm::vec3( 0, 0, 1 ) * 0.05f;
-//        }
-//        if( glfwGetKey( window, GLFW_KEY_LEFT_CONTROL ) ) {
-//            position -= glm::vec3( 0, 0, 1 ) * 0.05f;
-//        }
+        if( glfwGetKey( window, GLFW_KEY_LEFT_SHIFT ) ) {
+            position += glm::vec3( 0, 0, 1 ) * 0.05f;
+        }
+        if( glfwGetKey( window, GLFW_KEY_LEFT_CONTROL ) ) {
+            position -= glm::vec3( 0, 0, 1 ) * 0.05f;
+        }
         if( glfwGetKey( window, GLFW_KEY_LEFT ) ) {
             glm::mat4 rot = glm::rotate( glm::mat4( 1.0f ), glm::radians( 0.5f ), { 0, 0, 1 } );
             viewDirection = rot * glm::vec4( viewDirection.x, viewDirection.y, viewDirection.z, 0.0f );
