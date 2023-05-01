@@ -56,13 +56,13 @@ const char* fragmentSource = "#version 330                                      
                              "void main() {                                                              \n"
                              "   FragColor = v_color;                                                    \n"
                              "}                                                                          \n";
-
+bool wireframe = false;
 
 int main() {
     // Read IFC, generate geometry and VAO
     auto ifcModel = std::make_shared<BuildingModel>();
     auto reader = std::make_shared<ReaderSTEP>();
-    reader->loadModelFromFile( "example.ifc", ifcModel );
+    reader->loadModelFromFile( "1.ifc", ifcModel );
 
 
     auto parameters = std::make_shared<ifcpp::Parameters>( ifcpp::Parameters {
@@ -72,42 +72,63 @@ int main() {
         100,
         4,
     } );
-    auto adapter = std::make_shared<ifcpp::Adapter>();
+    auto adapter = std::make_shared<Adapter>();
+    auto styleConverter = std::make_shared<ifcpp::StyleConverter>();
     auto geomUtils = std::make_shared<ifcpp::GeomUtils<csgjscpp::Vector>>( parameters );
-    auto primitivesConverter = std::make_shared<ifcpp::PrimitivesConverter<csgjscpp::Vector>>();
+    auto primitivesConverter = std::make_shared<ifcpp::PrimitiveTypesConverter<csgjscpp::Vector>>();
     auto splineConverter = std::make_shared<ifcpp::SplineConverter<csgjscpp::Vector>>( primitivesConverter, geomUtils, parameters );
     auto curveConverter = std::make_shared<ifcpp::CurveConverter<csgjscpp::Vector>>( primitivesConverter, geomUtils, splineConverter, parameters );
     auto extruder = std::make_shared<ifcpp::Extruder<csgjscpp::Vector>>( geomUtils, parameters );
     auto profileConverter = std::make_shared<ifcpp::ProfileConverter<csgjscpp::Vector>>( curveConverter, geomUtils, primitivesConverter, parameters );
     auto geometryConverter = std::make_shared<ifcpp::GeometryConverter<csgjscpp::Vector>>( curveConverter, primitivesConverter, splineConverter, geomUtils,
                                                                                            extruder, profileConverter, parameters );
-    auto solidConverter = std::make_shared<ifcpp::SolidConverter<ifcpp::Adapter>>( primitivesConverter, curveConverter, profileConverter, extruder,
-                                                                                   geometryConverter, adapter, geomUtils, parameters );
+    auto solidConverter = std::make_shared<ifcpp::SolidConverter<Adapter>>( primitivesConverter, curveConverter, profileConverter, extruder, geometryConverter,
+                                                                            adapter, geomUtils, styleConverter, parameters );
     auto geometryGenerator =
-        std::make_shared<ifcpp::GeometryGenerator<ifcpp::Adapter>>( ifcModel, adapter, curveConverter, extruder, geometryConverter, geomUtils,
-                                                                    primitivesConverter, profileConverter, solidConverter, splineConverter, parameters );
+        std::make_shared<ifcpp::GeometryGenerator<Adapter>>( ifcModel, adapter, curveConverter, extruder, geometryConverter, geomUtils, primitivesConverter,
+                                                             profileConverter, solidConverter, splineConverter, styleConverter, parameters );
 
     // auto generator = std::make_shared<ifcpp::GeometryGenerator<ifcpp::Adapter>>(ifcModel, adapter);
-    const auto entities = geometryGenerator->GenerateGeometry();
+    auto entities = geometryGenerator->GenerateGeometry();
     glm::vec3 center( 0, 0, 0 );
     std::vector<float> vbo;
     std::vector<unsigned int> ibo;
+    std::vector<unsigned int> iboTransparent;
     std::vector<unsigned int> cbo;
-     for( const auto& e: entities ) {
-         for( const auto& p: e.m_polygons ) {
-             for( int i = 0; i < p.vertices.size(); i++ ) {
-                 ibo.push_back( i + vbo.size() / 3 );
-             }
-             for( const auto& v: p.vertices ) {
-                 center = center + glm::vec3( v.pos.x, v.pos.y, v.pos.z );
-                 vbo.push_back( v.pos.x );
-                 vbo.push_back( v.pos.y );
-                 vbo.push_back( v.pos.z );
-                 cbo.push_back( (255 << 24) | (255 << 16) | (255 << 8) | (255) );
-             }
-         }
-     }
-     center = center / (float)(vbo.size() / 3);
+    for( auto& e: entities ) {
+        for( auto& m: e.m_meshes ) {
+            if( m.m_color == 0 ) {
+                // No material
+                m.m_color = std::numeric_limits<unsigned int>::max();
+            }
+            bool opaque = ( m.m_color >> 24 ) == 255;
+            for( const auto& p: m.m_polygons ) {
+                if( opaque ) {
+                    for( int i = 1; i < p.vertices.size() - 1; i++ ) {
+                        ibo.push_back( vbo.size() / 3 );
+                        ibo.push_back( i + vbo.size() / 3 );
+                        ibo.push_back( i + 1 + vbo.size() / 3 );
+                    }
+                } else {
+                    for( int i = 1; i < p.vertices.size() - 1; i++ ) {
+                        iboTransparent.push_back( vbo.size() / 3 );
+                        iboTransparent.push_back( i + vbo.size() / 3 );
+                        iboTransparent.push_back( i + 1 + vbo.size() / 3 );
+                    }
+                }
+                for( const auto& v: p.vertices ) {
+                    center = center + glm::vec3( v.pos.x, v.pos.y, v.pos.z );
+                    vbo.push_back( v.pos.x );
+                    vbo.push_back( v.pos.y );
+                    vbo.push_back( v.pos.z );
+                    cbo.push_back( m.m_color );
+                }
+            }
+        }
+    }
+    int transparentStartIdx = ibo.size();
+    std::copy( iboTransparent.begin(), iboTransparent.end(), std::back_inserter( ibo ) );
+    center = center / (float)( vbo.size() / 3 );
     //  Create window
     glfwInit();
     glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, 3 );
@@ -172,9 +193,16 @@ int main() {
     glClearColor( 0.07f, 0.13f, 0.17f, 1.0f );
     glEnable( GL_DEPTH_TEST );
     glEnable( GL_CULL_FACE );
+    //    glDisable( GL_CULL_FACE );
+    //    glDepthFunc(GL_LEQUAL);
     // Main loop
     while( !glfwWindowShouldClose( window ) ) {
         // Render VAO
+        if( wireframe ) {
+            glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+        } else {
+            glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+        }
         glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
         glUseProgram( program );
         auto projectionMatrix = glm::perspective( glm::radians( 60.0f ), 800.0f / 800.0f, 0.1f, 500.0f );
@@ -188,14 +216,30 @@ int main() {
         glEnableVertexAttribArray( 1 );
         glVertexAttribPointer( 1, 4, GL_UNSIGNED_BYTE, GL_TRUE, 0, nullptr );
         glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, iboId );
-        glDrawElements( GL_TRIANGLES, (int)ibo.size(), GL_UNSIGNED_INT, nullptr );
+
+        glDrawElements( GL_TRIANGLES, transparentStartIdx, GL_UNSIGNED_INT, nullptr );
+
+        if( !iboTransparent.empty() ) {
+            glEnable( GL_BLEND );
+            glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
+            glDrawElements( GL_TRIANGLES, ibo.size() - transparentStartIdx, GL_UNSIGNED_INT, (void*)( transparentStartIdx * sizeof( unsigned int ) ) );
+            glDisable( GL_BLEND );
+        }
+
         glBindBuffer( GL_ARRAY_BUFFER, 0 );
         glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
         glDisableVertexAttribArray( 0 );
         glDisableVertexAttribArray( 1 );
         glUseProgram( 0 );
+
+
         // Movement
         auto rightDir = glm::normalize( glm::cross( viewDirection, { 0, 0, 1 } ) );
+        glfwSetKeyCallback( window, []( GLFWwindow* window, int key, int scancode, int action, int mods ) {
+            if( key == GLFW_KEY_Z && action == GLFW_PRESS ) {
+                wireframe = !wireframe;
+            }
+        } );
         if( glfwGetKey( window, GLFW_KEY_W ) ) {
             position += viewDirection * 0.05f;
         }
@@ -208,20 +252,26 @@ int main() {
         if( glfwGetKey( window, GLFW_KEY_D ) ) {
             position += rightDir * 0.05f;
         }
+//        if( glfwGetKey( window, GLFW_KEY_LEFT_SHIFT ) ) {
+//            position += glm::vec3( 0, 0, 1 ) * 0.05f;
+//        }
+//        if( glfwGetKey( window, GLFW_KEY_LEFT_CONTROL ) ) {
+//            position -= glm::vec3( 0, 0, 1 ) * 0.05f;
+//        }
         if( glfwGetKey( window, GLFW_KEY_LEFT ) ) {
-            glm::mat4 rot = glm::rotate( glm::mat4( 1.0f ), glm::radians( 0.1f ), { 0, 0, 1 } );
+            glm::mat4 rot = glm::rotate( glm::mat4( 1.0f ), glm::radians( 0.5f ), { 0, 0, 1 } );
             viewDirection = rot * glm::vec4( viewDirection.x, viewDirection.y, viewDirection.z, 0.0f );
         }
         if( glfwGetKey( window, GLFW_KEY_RIGHT ) ) {
-            glm::mat4 rot = glm::rotate( glm::mat4( 1.0f ), glm::radians( -0.1f ), { 0, 0, 1 } );
+            glm::mat4 rot = glm::rotate( glm::mat4( 1.0f ), glm::radians( -0.5f ), { 0, 0, 1 } );
             viewDirection = rot * glm::vec4( viewDirection.x, viewDirection.y, viewDirection.z, 0.0f );
         }
         if( glfwGetKey( window, GLFW_KEY_UP ) ) {
-            glm::mat4 rot = glm::rotate( glm::mat4( 1.0f ), glm::radians( 0.1f ), rightDir );
+            glm::mat4 rot = glm::rotate( glm::mat4( 1.0f ), glm::radians( 0.5f ), rightDir );
             viewDirection = rot * glm::vec4( viewDirection.x, viewDirection.y, viewDirection.z, 0.0f );
         }
         if( glfwGetKey( window, GLFW_KEY_DOWN ) ) {
-            glm::mat4 rot = glm::rotate( glm::mat4( 1.0f ), glm::radians( -0.1f ), rightDir );
+            glm::mat4 rot = glm::rotate( glm::mat4( 1.0f ), glm::radians( -0.5f ), rightDir );
             viewDirection = rot * glm::vec4( viewDirection.x, viewDirection.y, viewDirection.z, 0.0f );
         }
         glfwSwapBuffers( window );
