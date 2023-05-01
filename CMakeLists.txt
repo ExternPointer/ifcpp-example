@@ -9,6 +9,9 @@ add_subdirectory( third_party/ifcpp )
 
 add_definitions( -DGLEW_STATIC )
 add_definitions( -DIFCQUERY_STATIC_LIB )
+set( GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE )
+set( GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE )
+set( GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE )
 find_package( OpenGL REQUIRED )
 
 set( SOURCES
@@ -20,4 +23,4 @@ set( HEADERS
         src/Adapter.h )
 
 add_executable( ${PROJECT_NAME} ${SOURCES} )
-target_link_libraries( ${PROJECT_NAME} PRIVATE ${OPENGL_LIBRARY} ifcpp glfw libglew_static glm )
+target_link_libraries( ${PROJECT_NAME} PRIVATE OpenGL::GL ifcpp glfw libglew_static glm )

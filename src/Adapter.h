@@ -37,9 +37,6 @@ public:
     using TMesh = Mesh;
     using TVector = csgjscpp::Vector;
 
-    inline TPolyline CreatePolyline( const std::vector<TVector>& vertices ) {
-        return { vertices };
-    }
     inline TTriangle CreateTriangle( std::vector<TVector> vertices, std::vector<int> indices ) {
         if( indices.size() != 3 ) {
             // TODO: Log error
@@ -52,8 +49,17 @@ public:
             { vertices[ indices[ 2 ] ], { 0, 0, 0 }, 0 },
         } ) );
     }
+    inline TPolyline CreatePolyline( const std::vector<TVector>& vertices ) {
+        return { vertices };
+    }
     inline TMesh CreateMesh( const std::vector<TTriangle>& triangles ) {
         return { triangles };
+    }
+    inline TPolyline CreatePolyline( const TPolyline& other ) {
+        return other;
+    }
+    inline TMesh CreateMesh( const TMesh& other ) {
+        return other;
     }
     inline TEntity CreateEntity( const std::shared_ptr<IFC4X3::IfcObjectDefinition>& ifcObject, const std::vector<TMesh>& meshes,
                                  const std::vector<TPolyline>& polylines ) {
