@@ -87,22 +87,22 @@ public:
             }
             if( s->m_type == ifcpp::Style::SURFACE_BACK ) {
                 style = s;
-                //                                for( auto& m: *meshes ) {
-                //                                    for( auto& t: m.m_triangles ) {
-                //                                        t.flip();
-                //                                    }
-                //                                }
+                for( auto& m: *meshes ) {
+                    for( auto& t: m.m_polygons ) {
+                        t.flip();
+                    }
+                }
                 break;
             }
             if( s->m_type == ifcpp::Style::SURFACE_BOTH ) {
                 style = s;
-                //                                for( auto& m: *meshes ) {
-                //                                    auto triangles = m.m_triangles;
-                //                                    for( auto& t: triangles ) {
-                //                                        t.flip();
-                //                                    }
-                //                                    std::copy( triangles.begin(), triangles.end(), std::back_inserter( m.m_triangles ) );
-                //                                }
+                for( auto& m: *meshes ) {
+                    auto triangles = m.m_polygons;
+                    for( auto& t: triangles ) {
+                        t.flip();
+                    }
+                    std::copy( triangles.begin(), triangles.end(), std::back_inserter( m.m_polygons ) );
+                }
                 break;
             }
         }
@@ -236,7 +236,7 @@ public:
         TMesh result;
         result.m_polygons = this->GetResotred( resultNode->allpolygons(), offsetAndScale );
         // TODO: Fix styles (m_color) when we have several operand1 meshes
-        result.m_color = operand1[0].m_color;
+        result.m_color = operand1[ 0 ].m_color;
         return { result };
     }
     inline std::vector<TMesh> ComputeIntersection( std::vector<TMesh> operand1, std::vector<TMesh> operand2 ) {
