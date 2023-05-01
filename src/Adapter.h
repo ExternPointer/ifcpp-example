@@ -15,17 +15,20 @@ public:
     std::vector<csgjscpp::Vector> m_points;
     unsigned int m_color = 0;
 };
+
 class Mesh {
 public:
     std::vector<csgjscpp::Polygon> m_polygons;
     unsigned int m_color = 0;
 };
+
 class Entity {
 public:
     std::shared_ptr<IFC4X3::IfcObjectDefinition> m_ifcObject;
     std::vector<Mesh> m_meshes;
     std::vector<Polyline> m_polylines;
 };
+
 class Adapter {
 public:
     using TEntity = Entity;
@@ -236,7 +239,6 @@ public:
         result.m_color = operand1[0].m_color;
         return { result };
     }
-
     inline std::vector<TMesh> ComputeIntersection( std::vector<TMesh> operand1, std::vector<TMesh> operand2 ) {
         this->RemoveEmptyOperands( &operand1, &operand2 );
         if( operand1.empty() || operand2.empty() ) {
@@ -264,7 +266,6 @@ public:
 
         return operand1;
     }
-
     inline std::vector<TMesh> ComputeDifference( std::vector<TMesh> operand1, std::vector<TMesh> operand2 ) {
         this->RemoveEmptyOperands( &operand1, &operand2 );
         if( operand1.empty() || operand2.empty() ) {
@@ -294,40 +295,6 @@ public:
     }
 
 private:
-    inline std::vector<TTriangle> ComputeUnion( std::vector<TTriangle> operand1, std::vector<TTriangle> operand2 ) {
-        if( operand1.empty() ) {
-            return operand2;
-        }
-        if( operand2.empty() ) {
-            return operand1;
-        }
-        const auto restoreInfo = this->MoveOperandsToOrigin( operand1, operand2 );
-        auto result = csgjscpp::modeltopolygons( csgjscpp::csgunion( csgjscpp::modelfrompolygons( operand1 ), csgjscpp::modelfrompolygons( operand2 ) ) );
-        this->RestoreResult( result, restoreInfo );
-        return result;
-    }
-
-    inline std::vector<TTriangle> ComputeIntersection( std::vector<TTriangle> operand1, std::vector<TTriangle> operand2 ) {
-        if( operand1.empty() || operand2.empty() ) {
-            return {};
-        }
-        const auto restoreInfo = this->MoveOperandsToOrigin( operand1, operand2 );
-        auto result =
-            csgjscpp::modeltopolygons( csgjscpp::csgintersection( csgjscpp::modelfrompolygons( operand1 ), csgjscpp::modelfrompolygons( operand2 ) ) );
-        this->RestoreResult( result, restoreInfo );
-        return result;
-    }
-
-    inline std::vector<TTriangle> ComputeDifference( std::vector<TTriangle> operand1, std::vector<TTriangle> operand2 ) {
-        if( operand1.empty() || operand2.empty() ) {
-            return operand1;
-        }
-        const auto restoreInfo = this->MoveOperandsToOrigin( operand1, operand2 );
-        auto result = csgjscpp::modeltopolygons( csgjscpp::csgsubtract( csgjscpp::modelfrompolygons( operand1 ), csgjscpp::modelfrompolygons( operand2 ) ) );
-        this->RestoreResult( result, restoreInfo );
-        return result;
-    }
-
     inline void RemoveEmptyOperands( std::vector<TMesh>* operand1, std::vector<TMesh>* operand2 ) {
         this->RemoveEmptyOperands( operand1 );
         this->RemoveEmptyOperands( operand2 );
@@ -408,63 +375,5 @@ private:
             }
         }
         return result;
-    }
-
-    //         offset            scale
-    inline std::tuple<csgjscpp::Vector, csgjscpp::Vector> MoveOperandsToOrigin( std::vector<TTriangle>& operand1, std::vector<TTriangle>& operand2 ) {
-        csgjscpp::Vector min( std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max() );
-        csgjscpp::Vector max( -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max() );
-
-        for( const auto& p: operand2 ) {
-            for( const auto& v: p.vertices ) {
-                const auto& pos = v.pos;
-                min.x = std::min( min.x, pos.x );
-                min.y = std::min( min.y, pos.y );
-                min.z = std::min( min.z, pos.z );
-                max.x = std::max( max.x, pos.x );
-                max.y = std::max( max.y, pos.y );
-                max.z = std::max( max.z, pos.z );
-            }
-        }
-
-        const auto offset = -( max + min ) * 0.5f;
-        auto e = max - min;
-        const float t = 2.0f;
-        auto scale = csgjscpp::Vector( e.x > 0 ? t / e.x : 1.0f, e.y > 0 ? t / e.y : 1.0f, e.z > 0 ? t / e.z : 1.0f );
-
-        for( auto& p: operand1 ) {
-            for( auto& v: p.vertices ) {
-                v.pos = ( v.pos + offset );
-                v.pos.x *= scale.x;
-                v.pos.y *= scale.y;
-                v.pos.z *= scale.z;
-            }
-        }
-        for( auto& p: operand2 ) {
-            for( auto& v: p.vertices ) {
-                v.pos = ( v.pos + offset );
-                v.pos.x *= scale.x;
-                v.pos.y *= scale.y;
-                v.pos.z *= scale.z;
-            }
-        }
-
-        return { offset, scale };
-    }
-
-    inline void RestoreResult( std::vector<TTriangle>& result, const std::tuple<csgjscpp::Vector, csgjscpp::Vector>& offsetAndScale ) {
-        auto [ offset, scale ] = offsetAndScale;
-        scale.x = 1.0f / scale.x;
-        scale.y = 1.0f / scale.y;
-        scale.z = 1.0f / scale.z;
-        offset = -offset;
-        for( auto& p: result ) {
-            for( auto& v: p.vertices ) {
-                v.pos.x *= scale.x;
-                v.pos.y *= scale.y;
-                v.pos.z *= scale.z;
-                v.pos = v.pos + offset;
-            }
-        }
     }
 };
