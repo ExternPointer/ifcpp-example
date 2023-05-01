@@ -15,6 +15,8 @@ set( SOURCES
         src/main.cpp )
 
 set( HEADERS
+        src/csgjs.h
+        src/earcut.hpp
         src/Adapter.h )
 
 add_executable( ${PROJECT_NAME} ${SOURCES} )

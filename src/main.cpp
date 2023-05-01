@@ -62,7 +62,7 @@ int main() {
     // Read IFC, generate geometry and VAO
     auto ifcModel = std::make_shared<BuildingModel>();
     auto reader = std::make_shared<ReaderSTEP>();
-    reader->loadModelFromFile( "2.ifc", ifcModel );
+    reader->loadModelFromFile( "1.ifc", ifcModel );
 
 
     auto parameters = std::make_shared<ifcpp::Parameters>( ifcpp::Parameters {
@@ -98,21 +98,22 @@ int main() {
     for( auto& e: entities ) {
         for( auto& m: e.m_meshes ) {
             if( m.m_color == 0 ) {
-                // No material, skip
-                // continue;
-                m.m_color = 255 << 24 | 255;
-            } else {
-                // continue;
+                // No material
+                m.m_color = std::numeric_limits<unsigned int>::max();
             }
             bool opaque = ( m.m_color >> 24 ) == 255;
-            for( const auto& p: m.m_triangles ) {
+            for( const auto& p: m.m_polygons ) {
                 if( opaque ) {
-                    for( int i = 0; i < p.vertices.size(); i++ ) {
+                    for( int i = 1; i < p.vertices.size() - 1; i++ ) {
+                        ibo.push_back( vbo.size() / 3 );
                         ibo.push_back( i + vbo.size() / 3 );
+                        ibo.push_back( i + 1 + vbo.size() / 3 );
                     }
                 } else {
-                    for( int i = 0; i < p.vertices.size(); i++ ) {
+                    for( int i = 1; i < p.vertices.size() - 1; i++ ) {
+                        iboTransparent.push_back( vbo.size() / 3 );
                         iboTransparent.push_back( i + vbo.size() / 3 );
+                        iboTransparent.push_back( i + 1 + vbo.size() / 3 );
                     }
                 }
                 for( const auto& v: p.vertices ) {
@@ -251,12 +252,12 @@ int main() {
         if( glfwGetKey( window, GLFW_KEY_D ) ) {
             position += rightDir * 0.05f;
         }
-        if( glfwGetKey( window, GLFW_KEY_LEFT_SHIFT ) ) {
-            position += glm::vec3( 0, 0, 1 ) * 0.05f;
-        }
-        if( glfwGetKey( window, GLFW_KEY_LEFT_CONTROL ) ) {
-            position -= glm::vec3( 0, 0, 1 ) * 0.05f;
-        }
+//        if( glfwGetKey( window, GLFW_KEY_LEFT_SHIFT ) ) {
+//            position += glm::vec3( 0, 0, 1 ) * 0.05f;
+//        }
+//        if( glfwGetKey( window, GLFW_KEY_LEFT_CONTROL ) ) {
+//            position -= glm::vec3( 0, 0, 1 ) * 0.05f;
+//        }
         if( glfwGetKey( window, GLFW_KEY_LEFT ) ) {
             glm::mat4 rot = glm::rotate( glm::mat4( 1.0f ), glm::radians( 0.5f ), { 0, 0, 1 } );
             viewDirection = rot * glm::vec4( viewDirection.x, viewDirection.y, viewDirection.z, 0.0f );
