@@ -99,7 +99,7 @@ int main() {
         for( auto& m: e.m_meshes ) {
             if( m.m_color == 0 ) {
                 // No material
-                m.m_color = std::numeric_limits<unsigned int>::max();
+                continue;
             }
             bool opaque = ( m.m_color >> 24 ) == 255;
             for( const auto& p: m.m_polygons ) {
