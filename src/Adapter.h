@@ -299,7 +299,6 @@ private:
         this->RemoveEmptyOperands( operand1 );
         this->RemoveEmptyOperands( operand2 );
     }
-
     inline void RemoveEmptyOperands( std::vector<TMesh>* operand ) {
         for( int i = 0; i < operand->size(); i++ ) {
             if( operand->at( i ).m_polygons.empty() ) {
@@ -308,7 +307,6 @@ private:
             }
         }
     }
-
     inline std::tuple<csgjscpp::Vector, csgjscpp::Vector> CalculateOffsetAndScale( const std::vector<TMesh>& operand1, const std::vector<TMesh>& operand2 ) {
         std::vector<TTriangle> triangles;
         for( const auto& o: operand1 ) {
@@ -319,7 +317,6 @@ private:
         }
         return this->CalculateOffsetAndScale( triangles );
     }
-
     inline std::tuple<csgjscpp::Vector, csgjscpp::Vector> CalculateOffsetAndScale( const std::vector<TTriangle>& triangles ) {
         csgjscpp::Vector min( std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max() );
         csgjscpp::Vector max( -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max() );
@@ -343,7 +340,6 @@ private:
 
         return { offset, scale };
     }
-
     inline std::vector<TTriangle> GetMovedAndScaled( const std::vector<TTriangle>& triangles,
                                                      const std::tuple<csgjscpp::Vector, csgjscpp::Vector>& offsetAndScale ) {
         auto result = triangles;
@@ -358,7 +354,6 @@ private:
         }
         return result;
     }
-
     inline std::vector<TTriangle> GetResotred( const std::vector<TTriangle>& triangles, const std::tuple<csgjscpp::Vector, csgjscpp::Vector>& offsetAndScale ) {
         auto [ offset, scale ] = offsetAndScale;
         offset = -offset;

@@ -62,7 +62,7 @@ int main() {
     // Read IFC, generate geometry and VAO
     auto ifcModel = std::make_shared<BuildingModel>();
     auto reader = std::make_shared<ReaderSTEP>();
-    reader->loadModelFromFile( "3.ifc", ifcModel );
+    reader->loadModelFromFile( "1.ifc", ifcModel );
 
 
     auto parameters = std::make_shared<ifcpp::Parameters>( ifcpp::Parameters {
