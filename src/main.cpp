@@ -1,5 +1,6 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include <chrono>
 #include <iostream>
 
 #define CSGJSCPP_IMPLEMENTATION
@@ -62,7 +63,12 @@ int main() {
     // Read IFC, generate geometry and VAO
     auto ifcModel = std::make_shared<BuildingModel>();
     auto reader = std::make_shared<ReaderSTEP>();
-    reader->loadModelFromFile( "buero.ifc", ifcModel );
+    auto parsingStartTime = std::chrono::high_resolution_clock::now();
+    reader->loadModelFromFile( "11.ifc", ifcModel );
+    auto parsingFinishTime = std::chrono::high_resolution_clock::now();
+    auto parsingTime = parsingFinishTime - parsingStartTime;
+    std::cout << "parsing: " << std::chrono::duration_cast<std::chrono::milliseconds>( parsingTime ).count() << " milliseconds ("
+              << std::chrono::duration_cast<std::chrono::seconds>( parsingTime ).count() << " seconds)" << std::endl;
 
 
     auto parameters = std::make_shared<ifcpp::Parameters>( ifcpp::Parameters {
@@ -89,7 +95,13 @@ int main() {
                                                              profileConverter, solidConverter, splineConverter, styleConverter, parameters );
 
     // auto generator = std::make_shared<ifcpp::GeometryGenerator<ifcpp::Adapter>>(ifcModel, adapter);
+    auto generationStartTime = std::chrono::high_resolution_clock::now();
     auto entities = geometryGenerator->GenerateGeometry();
+    auto generationFinishTime = std::chrono::high_resolution_clock::now();
+    auto generationTime = generationFinishTime - generationStartTime;
+    std::cout << "geometry generation: " << std::chrono::duration_cast<std::chrono::milliseconds>( generationTime ).count() << " milliseconds ("
+              << std::chrono::duration_cast<std::chrono::seconds>( generationTime ).count() << " seconds)" << std::endl;
+
     glm::vec3 center( 0, 0, 0 );
     std::vector<float> vbo;
     std::vector<unsigned int> ibo;
