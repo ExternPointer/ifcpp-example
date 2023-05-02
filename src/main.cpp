@@ -64,7 +64,7 @@ int main() {
     auto ifcModel = std::make_shared<BuildingModel>();
     auto reader = std::make_shared<ReaderSTEP>();
     auto parsingStartTime = std::chrono::high_resolution_clock::now();
-    reader->loadModelFromFile( "11.ifc", ifcModel );
+    reader->loadModelFromFile( "example.ifc", ifcModel );
     auto parsingFinishTime = std::chrono::high_resolution_clock::now();
     auto parsingTime = parsingFinishTime - parsingStartTime;
     std::cout << "parsing: " << std::chrono::duration_cast<std::chrono::milliseconds>( parsingTime ).count() << " milliseconds ("
