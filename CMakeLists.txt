@@ -9,6 +9,8 @@ add_subdirectory( third_party/ifcpp )
 
 add_definitions( -DGLEW_STATIC )
 add_definitions( -DIFCQUERY_STATIC_LIB )
+add_definitions( -D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS )
+add_definitions( -D_LIBCPP_DISABLE_DEPRECATION_WARNINGS )
 set( GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE )
 set( GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE )
 set( GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE )
