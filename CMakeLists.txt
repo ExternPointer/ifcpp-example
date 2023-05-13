@@ -20,7 +20,7 @@ set( SOURCES
         src/main.cpp )
 
 set( HEADERS
-        src/csgjs.h
+        src/csg.hpp
         src/earcut.hpp
         src/Adapter.h )
 

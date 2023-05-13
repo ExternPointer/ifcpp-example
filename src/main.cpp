@@ -3,9 +3,6 @@
 #include <chrono>
 #include <iostream>
 
-#define CSGJSCPP_IMPLEMENTATION
-#include "csgjs.h"
-
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -75,19 +72,19 @@ int main() {
         1e-6,
         14,
         5,
-        100,
+        50,
         4,
     } );
     auto adapter = std::make_shared<Adapter>();
     auto styleConverter = std::make_shared<ifcpp::StyleConverter>();
-    auto geomUtils = std::make_shared<ifcpp::GeomUtils<csgjscpp::Vector>>( parameters );
-    auto primitivesConverter = std::make_shared<ifcpp::PrimitiveTypesConverter<csgjscpp::Vector>>();
-    auto splineConverter = std::make_shared<ifcpp::SplineConverter<csgjscpp::Vector>>( primitivesConverter, geomUtils, parameters );
-    auto curveConverter = std::make_shared<ifcpp::CurveConverter<csgjscpp::Vector>>( primitivesConverter, geomUtils, splineConverter, parameters );
-    auto extruder = std::make_shared<ifcpp::Extruder<csgjscpp::Vector>>( geomUtils, parameters );
-    auto profileConverter = std::make_shared<ifcpp::ProfileConverter<csgjscpp::Vector>>( curveConverter, geomUtils, primitivesConverter, parameters );
-    auto geometryConverter = std::make_shared<ifcpp::GeometryConverter<csgjscpp::Vector>>( curveConverter, primitivesConverter, splineConverter, geomUtils,
-                                                                                           extruder, profileConverter, parameters );
+    auto geomUtils = std::make_shared<ifcpp::GeomUtils<csg::vertex>>( parameters );
+    auto primitivesConverter = std::make_shared<ifcpp::PrimitiveTypesConverter<csg::vertex>>();
+    auto splineConverter = std::make_shared<ifcpp::SplineConverter<csg::vertex>>( primitivesConverter, geomUtils, parameters );
+    auto curveConverter = std::make_shared<ifcpp::CurveConverter<csg::vertex>>( primitivesConverter, geomUtils, splineConverter, parameters );
+    auto extruder = std::make_shared<ifcpp::Extruder<csg::vertex>>( geomUtils, parameters );
+    auto profileConverter = std::make_shared<ifcpp::ProfileConverter<csg::vertex>>( curveConverter, geomUtils, primitivesConverter, parameters );
+    auto geometryConverter = std::make_shared<ifcpp::GeometryConverter<csg::vertex>>( curveConverter, primitivesConverter, splineConverter, geomUtils, extruder,
+                                                                                      profileConverter, parameters );
     auto solidConverter = std::make_shared<ifcpp::SolidConverter<Adapter>>( primitivesConverter, curveConverter, profileConverter, extruder, geometryConverter,
                                                                             adapter, geomUtils, styleConverter, parameters );
     auto geometryGenerator =
@@ -115,32 +112,53 @@ int main() {
             }
             bool opaque = ( m.m_color >> 24 ) == 255;
             for( const auto& p: m.m_polygons ) {
+                if( p.a_.x != p.a_.x || p.a_.y != p.a_.y || p.a_.z != p.a_.z ||
+                    p.b_.x != p.b_.x || p.b_.y != p.b_.y || p.b_.z != p.b_.z ||
+                    p.c_.x != p.c_.x || p.c_.y != p.c_.y || p.c_.z != p.c_.z ) {
+                    continue;
+                }
                 if( opaque ) {
-                    for( int i = 1; i < p.vertices.size() - 1; i++ ) {
+                    for( int i = 1; i < 2; i++ ) {
                         ibo.push_back( vbo.size() / 3 );
                         ibo.push_back( i + vbo.size() / 3 );
                         ibo.push_back( i + 1 + vbo.size() / 3 );
                     }
                 } else {
-                    for( int i = 1; i < p.vertices.size() - 1; i++ ) {
+                    for( int i = 1; i < 2; i++ ) {
                         iboTransparent.push_back( vbo.size() / 3 );
                         iboTransparent.push_back( i + vbo.size() / 3 );
                         iboTransparent.push_back( i + 1 + vbo.size() / 3 );
                     }
                 }
-                for( const auto& v: p.vertices ) {
-                    center = center + glm::vec3( v.pos.x, v.pos.y, v.pos.z );
-                    vbo.push_back( v.pos.x );
-                    vbo.push_back( v.pos.y );
-                    vbo.push_back( v.pos.z );
-                    cbo.push_back( m.m_color );
+
+                if( p.a_.x == p.a_.x && p.a_.y == p.a_.y && p.a_.z == p.a_.z ) {
+                    center = center + glm::vec3( p.a_.x, p.a_.y, p.a_.z );
                 }
+
+                vbo.push_back( p.a_.x );
+                vbo.push_back( p.a_.y );
+                vbo.push_back( p.a_.z );
+
+                vbo.push_back( p.b_.x );
+                vbo.push_back( p.b_.y );
+                vbo.push_back( p.b_.z );
+
+                vbo.push_back( p.c_.x );
+                vbo.push_back( p.c_.y );
+                vbo.push_back( p.c_.z );
+
+                cbo.push_back( m.m_color );
+                cbo.push_back( m.m_color );
+                cbo.push_back( m.m_color );
             }
         }
     }
-    int transparentStartIdx = ibo.size();
+    unsigned int transparentStartIdx = ibo.size();
     std::copy( iboTransparent.begin(), iboTransparent.end(), std::back_inserter( ibo ) );
-    center = center / (float)( vbo.size() / 3 );
+    center = center / (float)( vbo.size() / 9 );
+    center.x = vbo[0];
+    center.y = vbo[1];
+    center.z = vbo[2];
     //  Create window
     glfwInit();
     glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, 3 );
