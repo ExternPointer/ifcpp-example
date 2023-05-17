@@ -3,9 +3,6 @@
 #include <chrono>
 #include <iostream>
 
-#define CSGJSCPP_IMPLEMENTATION
-#include "csgjs.h"
-
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -18,45 +15,49 @@
 #include <ifcpp/Geometry/GeometryGenerator.h>
 
 
-const char* vertexSource = "#version 330                                                               \n"
-                           "layout ( location = 0 ) in vec3 a_position;                                \n"
-                           "layout ( location = 1 ) in vec4 a_vertex_color;                            \n"
-                           "out vec4 v_vertex_color;                                                   \n"
-                           "void main() {                                                              \n"
-                           "   v_vertex_color = a_vertex_color;                                        \n"
-                           "   gl_Position = vec4( a_position, 1 );                                    \n"
-                           "}                                                                          \n";
+const char* vertexSource =
+    "#version 330                                                                                                                                           \n"
+    "layout ( location = 0 ) in vec3 a_position;                                                                                                            \n"
+    "layout ( location = 1 ) in vec4 a_vertex_color;                                                                                                        \n"
+    "out vec4 v_vertex_color;                                                                                                                               \n"
+    "void main() {                                                                                                                                          \n"
+    "   v_vertex_color = a_vertex_color;                                                                                                                    \n"
+    "   gl_Position = vec4( a_position, 1 );                                                                                                                \n"
+    "}                                                                                                                                                      \n";
 
-const char* geometrySource = "#version 330                                                               \n"
-                             "layout ( triangles ) in;                                                   \n"
-                             "layout ( triangle_strip, max_vertices = 3 ) out;                           \n"
-                             "in vec4 v_vertex_color[];                                                  \n"
-                             "out vec4 v_color;                                                          \n"
-                             "uniform mat4 m_transform;                                                  \n"
-                             "void main() {                                                              \n"
-                             "   vec3 a = gl_in[0].gl_Position.xyz - gl_in[1].gl_Position.xyz;           \n"
-                             "   vec3 b = gl_in[2].gl_Position.xyz - gl_in[1].gl_Position.xyz;           \n"
-                             "   vec3 v_normal = normalize( cross(a, b) );                               \n"
-                             "   vec3 v_lightDirection = normalize( vec3( 0.2, 0.5, -1 ) );              \n"
-                             "   float diffuse = ( dot( v_normal, v_lightDirection ) + 1 ) * 0.5;        \n"
-                             "   vec3 diffuseLight = diffuse * v_vertex_color[0].rgb * 0.8;              \n"
-                             "   vec3 ambientLight = v_vertex_color[0].rgb * 0.2;                        \n"
-                             "   v_color = vec4( ambientLight + diffuseLight, v_vertex_color[0].a );     \n"
-                             "   gl_Position = m_transform * gl_in[0].gl_Position;                       \n"
-                             "   EmitVertex();                                                           \n"
-                             "   gl_Position = m_transform * gl_in[1].gl_Position;                       \n"
-                             "   EmitVertex();                                                           \n"
-                             "   gl_Position = m_transform * gl_in[2].gl_Position;                       \n"
-                             "   EmitVertex();                                                           \n"
-                             "   EndPrimitive();                                                         \n"
-                             "}                                                                          \n";
+const char* geometrySource =
+    "#version 330                                                                                                                                           \n"
+    "layout ( triangles ) in;                                                                                                                               \n"
+    "layout ( triangle_strip, max_vertices = 3 ) out;                                                                                                       \n"
+    "in vec4 v_vertex_color[];                                                                                                                              \n"
+    "out vec4 v_color;                                                                                                                                      \n"
+    "uniform mat4 m_transform;                                                                                                                              \n"
+    "void main() {                                                                                                                                          \n"
+    "   vec3 a = gl_in[0].gl_Position.xyz - gl_in[1].gl_Position.xyz;                                                                                       \n"
+    "   vec3 b = gl_in[2].gl_Position.xyz - gl_in[1].gl_Position.xyz;                                                                                       \n"
+    "   vec3 v_normal = normalize( cross(a, b) );                                                                                                           \n"
+    "   vec3 v_lightDirection = normalize( vec3( 0.2, 0.5, -1 ) );                                                                                          \n"
+    "   float diffuse = ( dot( v_normal, v_lightDirection ) + 1 ) * 0.5;                                                                                    \n"
+    "   vec3 diffuseLight = diffuse * v_vertex_color[0].rgb * 0.8;                                                                                          \n"
+    "   vec3 ambientLight = v_vertex_color[0].rgb * 0.2;                                                                                                    \n"
+    "   v_color = vec4( ambientLight + diffuseLight, v_vertex_color[0].a );                                                                                 \n"
+    "   gl_Position = m_transform * gl_in[0].gl_Position;                                                                                                   \n"
+    "   EmitVertex();                                                                                                                                       \n"
+    "   gl_Position = m_transform * gl_in[1].gl_Position;                                                                                                   \n"
+    "   EmitVertex();                                                                                                                                       \n"
+    "   gl_Position = m_transform * gl_in[2].gl_Position;                                                                                                   \n"
+    "   EmitVertex();                                                                                                                                       \n"
+    "   EndPrimitive();                                                                                                                                     \n"
+    "}                                                                                                                                                      \n";
 
-const char* fragmentSource = "#version 330                                                               \n"
-                             "in vec4 v_color;                                                           \n"
-                             "out vec4 FragColor;                                                        \n"
-                             "void main() {                                                              \n"
-                             "   FragColor = v_color;                                                    \n"
-                             "}                                                                          \n";
+const char* fragmentSource =
+    "#version 330                                                                                                                                           \n"
+    "in vec4 v_color;                                                                                                                                       \n"
+    "out vec4 FragColor;                                                                                                                                    \n"
+    "void main() {                                                                                                                                          \n"
+    "   FragColor = v_color;                                                                                                                                \n"
+    "}                                                                                                                                                      \n";
+
 bool wireframe = false;
 
 int main() {
@@ -75,19 +76,19 @@ int main() {
         1e-6,
         14,
         5,
-        100,
+        1000,
         4,
     } );
     auto adapter = std::make_shared<Adapter>();
     auto styleConverter = std::make_shared<ifcpp::StyleConverter>();
-    auto geomUtils = std::make_shared<ifcpp::GeomUtils<csgjscpp::Vector>>( parameters );
-    auto primitivesConverter = std::make_shared<ifcpp::PrimitiveTypesConverter<csgjscpp::Vector>>();
-    auto splineConverter = std::make_shared<ifcpp::SplineConverter<csgjscpp::Vector>>( primitivesConverter, geomUtils, parameters );
-    auto curveConverter = std::make_shared<ifcpp::CurveConverter<csgjscpp::Vector>>( primitivesConverter, geomUtils, splineConverter, parameters );
-    auto extruder = std::make_shared<ifcpp::Extruder<csgjscpp::Vector>>( geomUtils, parameters );
-    auto profileConverter = std::make_shared<ifcpp::ProfileConverter<csgjscpp::Vector>>( curveConverter, geomUtils, primitivesConverter, parameters );
-    auto geometryConverter = std::make_shared<ifcpp::GeometryConverter<csgjscpp::Vector>>( curveConverter, primitivesConverter, splineConverter, geomUtils,
-                                                                                           extruder, profileConverter, parameters );
+    auto geomUtils = std::make_shared<ifcpp::GeomUtils<csg::Vector>>( parameters );
+    auto primitivesConverter = std::make_shared<ifcpp::PrimitiveTypesConverter<csg::Vector>>();
+    auto splineConverter = std::make_shared<ifcpp::SplineConverter<csg::Vector>>( primitivesConverter, geomUtils, parameters );
+    auto curveConverter = std::make_shared<ifcpp::CurveConverter<csg::Vector>>( primitivesConverter, geomUtils, splineConverter, parameters );
+    auto extruder = std::make_shared<ifcpp::Extruder<csg::Vector>>( geomUtils, parameters );
+    auto profileConverter = std::make_shared<ifcpp::ProfileConverter<csg::Vector>>( curveConverter, geomUtils, primitivesConverter, parameters );
+    auto geometryConverter = std::make_shared<ifcpp::GeometryConverter<csg::Vector>>( curveConverter, primitivesConverter, splineConverter, geomUtils, extruder,
+                                                                                      profileConverter, parameters );
     auto solidConverter = std::make_shared<ifcpp::SolidConverter<Adapter>>( primitivesConverter, curveConverter, profileConverter, extruder, geometryConverter,
                                                                             adapter, geomUtils, styleConverter, parameters );
     auto geometryGenerator =
@@ -102,19 +103,19 @@ int main() {
     std::cout << "geometry generation: " << std::chrono::duration_cast<std::chrono::milliseconds>( generationTime ).count() << " milliseconds ("
               << std::chrono::duration_cast<std::chrono::seconds>( generationTime ).count() << " seconds)" << std::endl;
 
-    glm::vec3 center( 0, 0, 0 );
+    glm::vec<3, double, glm::defaultp> center( 0, 0, 0 );
     std::vector<float> vbo;
     std::vector<unsigned int> ibo;
     std::vector<unsigned int> iboTransparent;
     std::vector<unsigned int> cbo;
     for( auto& e: entities ) {
-        for( auto& m: e.m_meshes ) {
-            if( m.m_color == 0 ) {
+        for( auto& m: e->m_meshes ) {
+            if( m->m_color == 0 ) {
                 // No material
                 continue;
             }
-            bool opaque = ( m.m_color >> 24 ) == 255;
-            for( const auto& p: m.m_polygons ) {
+            bool opaque = ( m->m_color >> 24 ) == 255;
+            for( const auto& p: m->m_polygons ) {
                 if( opaque ) {
                     for( int i = 1; i < p.vertices.size() - 1; i++ ) {
                         ibo.push_back( vbo.size() / 3 );
@@ -129,18 +130,18 @@ int main() {
                     }
                 }
                 for( const auto& v: p.vertices ) {
-                    center = center + glm::vec3( v.pos.x, v.pos.y, v.pos.z );
-                    vbo.push_back( v.pos.x );
-                    vbo.push_back( v.pos.y );
-                    vbo.push_back( v.pos.z );
-                    cbo.push_back( m.m_color );
+                    center = center + glm::vec<3, double, glm::defaultp>( v.x, v.y, v.z );
+                    vbo.push_back( v.x );
+                    vbo.push_back( v.y );
+                    vbo.push_back( v.z );
+                    cbo.push_back( m->m_color );
                 }
             }
         }
     }
-    int transparentStartIdx = ibo.size();
+    unsigned int transparentStartIdx = ibo.size();
     std::copy( iboTransparent.begin(), iboTransparent.end(), std::back_inserter( ibo ) );
-    center = center / (float)( vbo.size() / 3 );
+    center = center / (double)( vbo.size() / 3 );
     //  Create window
     glfwInit();
     glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, 3 );
