@@ -25,50 +25,50 @@ public:
 class Entity {
 public:
     std::shared_ptr<IFC4X3::IfcObjectDefinition> m_ifcObject;
-    std::vector<Mesh> m_meshes;
-    std::vector<Polyline> m_polylines;
+    std::vector<std::shared_ptr<Mesh>> m_meshes;
+    std::vector<std::shared_ptr<Polyline>> m_polylines;
 };
 
 class Adapter {
 public:
-    using TEntity = Entity;
+    using TEntity = std::shared_ptr<Entity>;
     using TTriangle = csgjscpp::Polygon;
-    using TPolyline = Polyline;
-    using TMesh = Mesh;
+    using TPolyline = std::shared_ptr<Polyline>;
+    using TMesh = std::shared_ptr<Mesh>;
     using TVector = csgjscpp::Vector;
 
-    inline TTriangle CreateTriangle( std::vector<TVector> vertices, std::vector<int> indices ) {
+    inline TTriangle CreateTriangle( const std::vector<TVector>& vertices, const std::vector<int>& indices ) {
         if( indices.size() != 3 ) {
             // TODO: Log error
             // WTF???
             return {};
         }
         return csgjscpp::Polygon( csgjscpp::Polygon( {
-            { vertices[ indices[ 0 ] ], { 0, 0, 0 }, 0 },
-            { vertices[ indices[ 1 ] ], { 0, 0, 0 }, 0 },
-            { vertices[ indices[ 2 ] ], { 0, 0, 0 }, 0 },
+            { vertices[ indices[ 0 ] ] },// { 0, 0, 0 }, 0 },
+            { vertices[ indices[ 1 ] ] },// { 0, 0, 0 }, 0 },
+            { vertices[ indices[ 2 ] ] },// { 0, 0, 0 }, 0 },
         } ) );
     }
     inline TPolyline CreatePolyline( const std::vector<TVector>& vertices ) {
-        return { vertices };
+        return std::make_shared<Polyline>( vertices );
     }
     inline TMesh CreateMesh( const std::vector<TTriangle>& triangles ) {
-        return { triangles };
+        return std::make_shared<Mesh>( triangles );
     }
     inline TPolyline CreatePolyline( const TPolyline& other ) {
-        return other;
+        return std::make_shared<Polyline>( *other );
     }
     inline TMesh CreateMesh( const TMesh& other ) {
-        return other;
+        return std::make_shared<Mesh>( *other );
     }
     inline TEntity CreateEntity( const std::shared_ptr<IFC4X3::IfcObjectDefinition>& ifcObject, const std::vector<TMesh>& meshes,
                                  const std::vector<TPolyline>& polylines ) {
-        return { ifcObject, meshes, polylines };
+        return std::make_shared<Entity>( ifcObject, meshes, polylines );
     }
 
-    inline void Transform( std::vector<TMesh>* meshes, ifcpp::Matrix<TVector> matrix ) {
+    inline void Transform( std::vector<TMesh>* meshes, const ifcpp::Matrix<TVector>& matrix ) {
         for( auto& m: *meshes ) {
-            for( auto& t: m.m_polygons ) {
+            for( auto& t: m->m_polygons ) {
                 for( auto& v: t.vertices ) {
                     matrix.Transform( &v.pos );
                 }
@@ -76,9 +76,9 @@ public:
             }
         }
     }
-    inline void Transform( std::vector<TPolyline>* polylines, ifcpp::Matrix<TVector> matrix ) {
+    inline void Transform( std::vector<TPolyline>* polylines, const ifcpp::Matrix<TVector>& matrix ) {
         for( auto& p: *polylines ) {
-            for( auto& v: p.m_points ) {
+            for( auto& v: p->m_points ) {
                 matrix.Transform( &v );
             }
         }
@@ -93,22 +93,22 @@ public:
             }
             if( s->m_type == ifcpp::Style::SURFACE_BACK ) {
                 style = s;
-                for( auto& m: *meshes ) {
-                    for( auto& t: m.m_polygons ) {
-                        t.flip();
-                    }
-                }
+                //                for( auto& m: *meshes ) {
+                //                    for( auto& t: m.m_polygons ) {
+                //                        t.flip();
+                //                    }
+                //                }
                 break;
             }
             if( s->m_type == ifcpp::Style::SURFACE_BOTH ) {
                 style = s;
-                for( auto& m: *meshes ) {
-                    auto triangles = m.m_polygons;
-                    for( auto& t: triangles ) {
-                        t.flip();
-                    }
-                    std::copy( triangles.begin(), triangles.end(), std::back_inserter( m.m_polygons ) );
-                }
+                //                for( auto& m: *meshes ) {
+                //                    auto triangles = m.m_polygons;
+                //                    for( auto& t: triangles ) {
+                //                        t.flip();
+                //                    }
+                //                    std::copy( triangles.begin(), triangles.end(), std::back_inserter( m.m_polygons ) );
+                //                }
                 break;
             }
         }
@@ -116,8 +116,8 @@ public:
             return;
         }
         for( auto& m: *meshes ) {
-            if( !m.m_color ) {
-                m.m_color = (int)( 255.0f * style->m_color.a ) << 24 | (int)( 255.0f * style->m_color.b ) << 16 | (int)( 255.0f * style->m_color.g ) << 8 |
+            if( !m->m_color ) {
+                m->m_color = (int)( 255.0f * style->m_color.a ) << 24 | (int)( 255.0f * style->m_color.b ) << 16 | (int)( 255.0f * style->m_color.g ) << 8 |
                     (int)( 255.0f * style->m_color.r );
             }
         }
@@ -134,8 +134,8 @@ public:
             return;
         }
         for( auto& p: *polylines ) {
-            if( !p.m_color ) {
-                p.m_color = (int)( 255.0f * style->m_color.a ) << 24 | (int)( 255.0f * style->m_color.b ) << 16 | (int)( 255.0f * style->m_color.g ) << 8 |
+            if( !p->m_color ) {
+                p->m_color = (int)( 255.0f * style->m_color.a ) << 24 | (int)( 255.0f * style->m_color.b ) << 16 | (int)( 255.0f * style->m_color.g ) << 8 |
                     (int)( 255.0f * style->m_color.r );
             }
         }
@@ -216,86 +216,76 @@ public:
         return result;
     }
 
-    inline std::vector<TMesh> ComputeUnion( std::vector<TMesh>& operand1, std::vector<TMesh>& operand2 ) {
-        this->RemoveEmptyOperands( &operand1, &operand2 );
+    inline std::vector<TMesh> ComputeUnion( const std::vector<TMesh>& operand1, const std::vector<TMesh>& operand2 ) {
+        //return operand1;
+        //this->RemoveEmptyOperands( &operand1, &operand2 );
         if( operand1.empty() ) {
             return operand2;
         } else if( operand2.empty() ) {
             return operand1;
         }
 
-        const auto offsetAndScale = this->CalculateOffsetAndScale( operand1, operand2 );
-
-        auto resultNode = std::make_unique<csgjscpp::CSGNode>(
-            csgjscpp::modeltopolygons( csgjscpp::modelfrompolygons( this->GetMovedAndScaled( operand1[ 0 ].m_polygons, offsetAndScale ) ) ) );
+        auto resultNode = std::make_unique<csgjscpp::CSGNode>( operand1[ 0 ]->m_polygons );
         for( int i = 1; i < operand1.size(); i++ ) {
-            auto o = csgjscpp::CSGNode(
-                csgjscpp::modeltopolygons( csgjscpp::modelfrompolygons( this->GetMovedAndScaled( operand1[ i ].m_polygons, offsetAndScale ) ) ) );
+            auto o = csgjscpp::CSGNode( operand1[ i ]->m_polygons );
             resultNode = std::unique_ptr<csgjscpp::CSGNode>( csgjscpp::csg_union( resultNode.get(), &o ) );
         }
         for( int i = 0; i < operand2.size(); i++ ) {
-            auto o = csgjscpp::CSGNode(
-                csgjscpp::modeltopolygons( csgjscpp::modelfrompolygons( this->GetMovedAndScaled( operand2[ i ].m_polygons, offsetAndScale ) ) ) );
+            auto o = csgjscpp::CSGNode( operand2[ i ]->m_polygons );
             resultNode = std::unique_ptr<csgjscpp::CSGNode>( csgjscpp::csg_union( resultNode.get(), &o ) );
         }
 
-        TMesh result;
-        result.m_polygons = this->GetResotred( resultNode->allpolygons(), offsetAndScale );
+        TMesh result = std::make_shared<Mesh>();
+        result->m_polygons = resultNode->allpolygons();
         // TODO: Fix styles (m_color) when we have several operand1 meshes
-        result.m_color = operand1[ 0 ].m_color;
+        result->m_color = operand1[ 0 ]->m_color;
         return { result };
     }
-    inline std::vector<TMesh> ComputeIntersection( std::vector<TMesh> operand1, std::vector<TMesh> operand2 ) {
-        this->RemoveEmptyOperands( &operand1, &operand2 );
+    inline std::vector<TMesh> ComputeIntersection( const std::vector<TMesh>& operand1, const std::vector<TMesh>& operand2 ) {
+        //return operand1;
+        //this->RemoveEmptyOperands( &operand1, &operand2 );
         if( operand1.empty() || operand2.empty() ) {
             return {};
         }
 
-        const auto offsetAndScale = this->CalculateOffsetAndScale( operand1, operand2 );
-
-        auto operand2node = std::make_unique<csgjscpp::CSGNode>(
-            csgjscpp::modeltopolygons( csgjscpp::modelfrompolygons( this->GetMovedAndScaled( operand2[ 0 ].m_polygons, offsetAndScale ) ) ) );
+        auto operand2node = std::make_unique<csgjscpp::CSGNode>( operand2[ 0 ]->m_polygons );
         for( int i = 1; i < operand2.size(); i++ ) {
-            auto o = csgjscpp::CSGNode(
-                csgjscpp::modeltopolygons( csgjscpp::modelfrompolygons( this->GetMovedAndScaled( operand2[ i ].m_polygons, offsetAndScale ) ) ) );
+            auto o = csgjscpp::CSGNode( operand2[ i ]->m_polygons );
             operand2node = std::unique_ptr<csgjscpp::CSGNode>( csgjscpp::csg_union( operand2node.get(), &o ) );
         }
 
         for( auto& o1: operand1 ) {
-            auto resultNode = std::make_unique<csgjscpp::CSGNode>(
-                csgjscpp::modeltopolygons( csgjscpp::modelfrompolygons( this->GetMovedAndScaled( o1.m_polygons, offsetAndScale ) ) ) );
+            auto resultNode = std::make_unique<csgjscpp::CSGNode>( o1->m_polygons );
             resultNode = std::unique_ptr<csgjscpp::CSGNode>( csgjscpp::csg_intersect( resultNode.get(), operand2node.get() ) );
-            o1.m_polygons = this->GetResotred( resultNode->allpolygons(), offsetAndScale );
+            o1->m_polygons = resultNode->allpolygons();
         }
 
-        this->RemoveEmptyOperands( &operand1 );
+        //this->RemoveEmptyOperands( &operand1 );
 
         return operand1;
     }
-    inline std::vector<TMesh> ComputeDifference( std::vector<TMesh> operand1, std::vector<TMesh> operand2 ) {
-        this->RemoveEmptyOperands( &operand1, &operand2 );
+    inline std::vector<TMesh> ComputeDifference( const std::vector<TMesh>& operand1, const std::vector<TMesh>& operand2 ) {
+        //return operand1;
+        //this->RemoveEmptyOperands( &operand1, &operand2 );
         if( operand1.empty() || operand2.empty() ) {
             return operand1;
         }
 
-        const auto offsetAndScale = this->CalculateOffsetAndScale( operand1, operand2 );
-
         std::vector<csgjscpp::CSGNode> operand2nodes;
         operand2nodes.reserve( operand2.size() );
         for( const auto& o: operand2 ) {
-            operand2nodes.emplace_back( csgjscpp::modeltopolygons( csgjscpp::modelfrompolygons( this->GetMovedAndScaled( o.m_polygons, offsetAndScale ) ) ) );
+            operand2nodes.emplace_back( o->m_polygons );
         }
 
         for( auto& o1: operand1 ) {
-            auto resultNode = std::make_unique<csgjscpp::CSGNode>(
-                csgjscpp::modeltopolygons( csgjscpp::modelfrompolygons( this->GetMovedAndScaled( o1.m_polygons, offsetAndScale ) ) ) );
+            auto resultNode = std::make_unique<csgjscpp::CSGNode>( o1->m_polygons );
             for( const auto& o2: operand2nodes ) {
-                resultNode = std::unique_ptr<csgjscpp::CSGNode>( csgjscpp::csg_subtract( resultNode.get(), &o2 ) );
+                csgjscpp::csg_subtract_inplace( resultNode.get(), &o2 );
             }
-            o1.m_polygons = this->GetResotred( resultNode->allpolygons(), offsetAndScale );
+            o1->m_polygons = std::move( resultNode->allpolygons() );
         }
 
-        this->RemoveEmptyOperands( &operand1 );
+        //this->RemoveEmptyOperands( &operand1 );
 
         return operand1;
     }
@@ -307,74 +297,10 @@ private:
     }
     inline void RemoveEmptyOperands( std::vector<TMesh>* operand ) {
         for( int i = 0; i < operand->size(); i++ ) {
-            if( operand->at( i ).m_polygons.empty() ) {
+            if( operand->at( i )->m_polygons.empty() ) {
                 operand->erase( operand->begin() + i );
                 i--;
             }
         }
-    }
-    inline std::tuple<csgjscpp::Vector, csgjscpp::Vector> CalculateOffsetAndScale( const std::vector<TMesh>& operand1, const std::vector<TMesh>& operand2 ) {
-        std::vector<TTriangle> triangles;
-        for( const auto& o: operand1 ) {
-            std::copy( o.m_polygons.begin(), o.m_polygons.end(), std::back_inserter( triangles ) );
-        }
-        for( const auto& o: operand2 ) {
-            std::copy( o.m_polygons.begin(), o.m_polygons.end(), std::back_inserter( triangles ) );
-        }
-        return this->CalculateOffsetAndScale( triangles );
-    }
-    inline std::tuple<csgjscpp::Vector, csgjscpp::Vector> CalculateOffsetAndScale( const std::vector<TTriangle>& triangles ) {
-        csgjscpp::Vector min( std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max() );
-        csgjscpp::Vector max( -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max() );
-
-        for( const auto& p: triangles ) {
-            for( const auto& v: p.vertices ) {
-                const auto& pos = v.pos;
-                min.x = std::min( min.x, pos.x );
-                min.y = std::min( min.y, pos.y );
-                min.z = std::min( min.z, pos.z );
-                max.x = std::max( max.x, pos.x );
-                max.y = std::max( max.y, pos.y );
-                max.z = std::max( max.z, pos.z );
-            }
-        }
-
-        const auto offset = -( min + max ) * 0.5f;
-        auto e = max - min;
-        const float t = 2.0f;
-        auto scale = csgjscpp::Vector( e.x > 0 ? t / e.x : 1.0f, e.y > 0 ? t / e.y : 1.0f, e.z > 0 ? t / e.z : 1.0f );
-
-        return { offset, scale };
-    }
-    inline std::vector<TTriangle> GetMovedAndScaled( const std::vector<TTriangle>& triangles,
-                                                     const std::tuple<csgjscpp::Vector, csgjscpp::Vector>& offsetAndScale ) {
-        auto result = triangles;
-        const auto [ offset, scale ] = offsetAndScale;
-        for( auto& p: result ) {
-            for( auto& v: p.vertices ) {
-                v.pos = v.pos + offset;
-                v.pos.x *= scale.x;
-                v.pos.y *= scale.y;
-                v.pos.z *= scale.z;
-            }
-        }
-        return result;
-    }
-    inline std::vector<TTriangle> GetResotred( const std::vector<TTriangle>& triangles, const std::tuple<csgjscpp::Vector, csgjscpp::Vector>& offsetAndScale ) {
-        auto [ offset, scale ] = offsetAndScale;
-        offset = -offset;
-        scale.x = 1.0f / scale.x;
-        scale.y = 1.0f / scale.y;
-        scale.z = 1.0f / scale.z;
-        auto result = triangles;
-        for( auto& p: result ) {
-            for( auto& v: p.vertices ) {
-                v.pos.x *= scale.x;
-                v.pos.y *= scale.y;
-                v.pos.z *= scale.z;
-                v.pos = v.pos + offset;
-            }
-        }
-        return result;
     }
 };

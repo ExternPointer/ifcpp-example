@@ -64,7 +64,7 @@ int main() {
     auto ifcModel = std::make_shared<BuildingModel>();
     auto reader = std::make_shared<ReaderSTEP>();
     auto parsingStartTime = std::chrono::high_resolution_clock::now();
-    reader->loadModelFromFile( "example.ifc", ifcModel );
+    reader->loadModelFromFile( "12.ifc", ifcModel );
     auto parsingFinishTime = std::chrono::high_resolution_clock::now();
     auto parsingTime = parsingFinishTime - parsingStartTime;
     std::cout << "parsing: " << std::chrono::duration_cast<std::chrono::milliseconds>( parsingTime ).count() << " milliseconds ("
@@ -75,7 +75,7 @@ int main() {
         1e-6,
         14,
         5,
-        100,
+        10000,
         4,
     } );
     auto adapter = std::make_shared<Adapter>();
@@ -102,19 +102,19 @@ int main() {
     std::cout << "geometry generation: " << std::chrono::duration_cast<std::chrono::milliseconds>( generationTime ).count() << " milliseconds ("
               << std::chrono::duration_cast<std::chrono::seconds>( generationTime ).count() << " seconds)" << std::endl;
 
-    glm::vec3 center( 0, 0, 0 );
+    glm::vec<3, double, glm::defaultp> center( 0, 0, 0 );
     std::vector<float> vbo;
     std::vector<unsigned int> ibo;
     std::vector<unsigned int> iboTransparent;
     std::vector<unsigned int> cbo;
     for( auto& e: entities ) {
-        for( auto& m: e.m_meshes ) {
-            if( m.m_color == 0 ) {
+        for( auto& m: e->m_meshes ) {
+            if( m->m_color == 0 ) {
                 // No material
                 continue;
             }
-            bool opaque = ( m.m_color >> 24 ) == 255;
-            for( const auto& p: m.m_polygons ) {
+            bool opaque = ( m->m_color >> 24 ) == 255;
+            for( const auto& p: m->m_polygons ) {
                 if( opaque ) {
                     for( int i = 1; i < p.vertices.size() - 1; i++ ) {
                         ibo.push_back( vbo.size() / 3 );
@@ -129,18 +129,18 @@ int main() {
                     }
                 }
                 for( const auto& v: p.vertices ) {
-                    center = center + glm::vec3( v.pos.x, v.pos.y, v.pos.z );
+                    center = center + glm::vec<3, double, glm::defaultp>( v.pos.x, v.pos.y, v.pos.z );
                     vbo.push_back( v.pos.x );
                     vbo.push_back( v.pos.y );
                     vbo.push_back( v.pos.z );
-                    cbo.push_back( m.m_color );
+                    cbo.push_back( m->m_color );
                 }
             }
         }
     }
-    int transparentStartIdx = ibo.size();
+    unsigned int transparentStartIdx = ibo.size();
     std::copy( iboTransparent.begin(), iboTransparent.end(), std::back_inserter( ibo ) );
-    center = center / (float)( vbo.size() / 3 );
+    center = center / (double)( vbo.size() / 3 );
     //  Create window
     glfwInit();
     glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, 3 );
