@@ -68,7 +68,7 @@ public:
                 for( auto& v: t.vertices ) {
                     matrix.Transform( &v );
                 }
-                t = csg::Polygon( t.vertices );
+                t = csg::Polygon( std::move( t.vertices ) );
             }
         }
     }
@@ -230,7 +230,7 @@ public:
         }
 
         // TODO: Fix styles (m_color) when we have several operand1 meshes
-        TMesh result = std::make_shared<Mesh>(resultNode.allpolygons(), operand1[ 0 ]->m_color);
+        TMesh result = std::make_shared<Mesh>( resultNode.allpolygons(), operand1[ 0 ]->m_color );
         return { result };
     }
     inline std::vector<TMesh> ComputeIntersection( const std::vector<TMesh>& operand1, const std::vector<TMesh>& operand2 ) {
@@ -239,7 +239,7 @@ public:
         }
 
         csg::details::CSGNode operand2node;
-        for(const auto & operand : operand2) {
+        for( const auto& operand: operand2 ) {
             auto n = csg::details::CSGNode( operand->m_polygons );
             csg::details::UnionInplace( &operand2node, &n );
         }
