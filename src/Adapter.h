@@ -12,13 +12,13 @@
 
 class Polyline {
 public:
-    std::vector<csgjscpp::Vector> m_points;
+    std::vector<csg::Vector> m_points;
     unsigned int m_color = 0;
 };
 
 class Mesh {
 public:
-    std::vector<csgjscpp::Polygon> m_polygons;
+    std::vector<csg::Polygon> m_polygons;
     unsigned int m_color = 0;
 };
 
@@ -32,10 +32,10 @@ public:
 class Adapter {
 public:
     using TEntity = std::shared_ptr<Entity>;
-    using TTriangle = csgjscpp::Polygon;
+    using TTriangle = csg::Polygon;
     using TPolyline = std::shared_ptr<Polyline>;
     using TMesh = std::shared_ptr<Mesh>;
-    using TVector = csgjscpp::Vector;
+    using TVector = csg::Vector;
 
     inline TTriangle CreateTriangle( const std::vector<TVector>& vertices, const std::vector<int>& indices ) {
         if( indices.size() != 3 ) {
@@ -43,11 +43,7 @@ public:
             // WTF???
             return {};
         }
-        return csgjscpp::Polygon( csgjscpp::Polygon( {
-            { vertices[ indices[ 0 ] ] },// { 0, 0, 0 }, 0 },
-            { vertices[ indices[ 1 ] ] },// { 0, 0, 0 }, 0 },
-            { vertices[ indices[ 2 ] ] },// { 0, 0, 0 }, 0 },
-        } ) );
+        return csg::Polygon( csg::Polygon( { vertices[ indices[ 0 ] ], vertices[ indices[ 1 ] ], vertices[ indices[ 2 ] ] } ) );
     }
     inline TPolyline CreatePolyline( const std::vector<TVector>& vertices ) {
         return std::make_shared<Polyline>( vertices );
@@ -56,10 +52,10 @@ public:
         return std::make_shared<Mesh>( triangles );
     }
     inline TPolyline CreatePolyline( const TPolyline& other ) {
-        return std::make_shared<Polyline>( *other );
+        return std::make_shared<Polyline>( other->m_points, other->m_color );
     }
     inline TMesh CreateMesh( const TMesh& other ) {
-        return std::make_shared<Mesh>( *other );
+        return std::make_shared<Mesh>( other->m_polygons, other->m_color );
     }
     inline TEntity CreateEntity( const std::shared_ptr<IFC4X3::IfcObjectDefinition>& ifcObject, const std::vector<TMesh>& meshes,
                                  const std::vector<TPolyline>& polylines ) {
@@ -70,9 +66,9 @@ public:
         for( auto& m: *meshes ) {
             for( auto& t: m->m_polygons ) {
                 for( auto& v: t.vertices ) {
-                    matrix.Transform( &v.pos );
+                    matrix.Transform( &v );
                 }
-                t = csgjscpp::Polygon( t.vertices );
+                t = csg::Polygon( t.vertices );
             }
         }
     }
@@ -151,34 +147,34 @@ public:
         for( const auto& a: loop ) {
             for( const auto& b: loop ) {
                 for( const auto& c: loop ) {
-                    const auto n = csgjscpp::cross( b - a, c - b );
-                    if( csgjscpp::lengthsquared( n ) > csgjscpp::lengthsquared( normal ) ) {
+                    const auto n = -csg::Cross( a - b, c - b );
+                    if( csg::LengthSquared( n ) > csg::LengthSquared( normal ) ) {
                         normal = n;
                     }
-                    if( csgjscpp::lengthsquared( normal ) > 1e-12 ) {
+                    if( csg::LengthSquared( normal ) > 1e-6 ) {
                         goto BREAK;
                     }
                 }
             }
         }
     BREAK:
-        normal = csgjscpp::unit( normal );
+        normal = csg::Normalized( normal );
 
-        auto right = csgjscpp::cross( { 0.0f, 0.0f, 1.0f }, normal );
-        if( csgjscpp::lengthsquared( right ) < 1e-6 ) {
-            right = csgjscpp::cross( normal, { 0.0f, -1.0f, 0.0f } );
+        auto right = csg::Cross( { 0.0f, 0.0f, 1.0f }, normal );
+        if( csg::LengthSquared( right ) < 1e-6 ) {
+            right = csg::Cross( normal, { 0.0f, -1.0f, 0.0f } );
         }
-        right = csgjscpp::unit( right );
-        auto up = csgjscpp::unit( csgjscpp::cross( normal, right ) );
+        right = csg::Normalized( right );
+        auto up = csg::Normalized( csg::Cross( normal, right ) );
 
 
-        std::vector<std::tuple<float, float>> outer;
+        std::vector<std::tuple<double, double>> outer;
 
-        float minx = std::numeric_limits<float>::max(), miny = std::numeric_limits<float>::max();
+        double minx = std::numeric_limits<double>::max(), miny = std::numeric_limits<double>::max();
 
         for( const auto& p: loop ) {
-            float x = csgjscpp::dot( right, p - origin );
-            float y = csgjscpp::dot( up, p - origin );
+            double x = csg::Dot( right, p - origin );
+            double y = csg::Dot( up, p - origin );
             outer.emplace_back( x, y );
             minx = std::min( minx, x );
             miny = std::min( miny, y );
@@ -189,7 +185,7 @@ public:
             p = { x - minx, y - miny };
         }
 
-        float s = 0.0f;
+        double s = 0.0f;
         outer.push_back( outer[ 0 ] );
         for( int i = 1; i < outer.size(); i++ ) {
             auto [ x1, y1 ] = outer[ i - 1 ];
@@ -199,7 +195,7 @@ public:
         outer.pop_back();
 
 
-        std::vector<std::vector<std::tuple<float, float>>> polygon = { outer };
+        std::vector<std::vector<std::tuple<double, double>>> polygon = { outer };
         auto result = mapbox::earcut<int>( polygon );
         if( s < 0 ) {
             std::reverse( std::begin( result ), std::end( result ) );
@@ -208,7 +204,7 @@ public:
             const auto& a = loop[ result[ i - 1 ] ];
             const auto& b = loop[ result[ i ] ];
             const auto& c = loop[ result[ i + 1 ] ];
-            if( csgjscpp::lengthsquared( csgjscpp::cross( b - a, c - b ) ) < 1e-12 ) {
+            if( csg::LengthSquared( csg::Cross( b - a, c - b ) ) < 1e-12 ) {
                 result.erase( result.begin() + i - 1, result.begin() + i + 2 );
                 i -= 3;
             }
@@ -217,90 +213,64 @@ public:
     }
 
     inline std::vector<TMesh> ComputeUnion( const std::vector<TMesh>& operand1, const std::vector<TMesh>& operand2 ) {
-        //return operand1;
-        //this->RemoveEmptyOperands( &operand1, &operand2 );
         if( operand1.empty() ) {
             return operand2;
         } else if( operand2.empty() ) {
             return operand1;
         }
 
-        auto resultNode = std::make_unique<csgjscpp::CSGNode>( operand1[ 0 ]->m_polygons );
-        for( int i = 1; i < operand1.size(); i++ ) {
-            auto o = csgjscpp::CSGNode( operand1[ i ]->m_polygons );
-            resultNode = std::unique_ptr<csgjscpp::CSGNode>( csgjscpp::csg_union( resultNode.get(), &o ) );
+        csg::details::CSGNode resultNode;
+        for( const auto& operand: operand1 ) {
+            auto n = csg::details::CSGNode( operand->m_polygons );
+            csg::details::UnionInplace( &resultNode, &n );
         }
-        for( int i = 0; i < operand2.size(); i++ ) {
-            auto o = csgjscpp::CSGNode( operand2[ i ]->m_polygons );
-            resultNode = std::unique_ptr<csgjscpp::CSGNode>( csgjscpp::csg_union( resultNode.get(), &o ) );
+        for( const auto& operand: operand2 ) {
+            auto n = csg::details::CSGNode( operand->m_polygons );
+            csg::details::UnionInplace( &resultNode, &n );
         }
 
-        TMesh result = std::make_shared<Mesh>();
-        result->m_polygons = resultNode->allpolygons();
         // TODO: Fix styles (m_color) when we have several operand1 meshes
-        result->m_color = operand1[ 0 ]->m_color;
+        TMesh result = std::make_shared<Mesh>(resultNode.allpolygons(), operand1[ 0 ]->m_color);
         return { result };
     }
     inline std::vector<TMesh> ComputeIntersection( const std::vector<TMesh>& operand1, const std::vector<TMesh>& operand2 ) {
-        //return operand1;
-        //this->RemoveEmptyOperands( &operand1, &operand2 );
         if( operand1.empty() || operand2.empty() ) {
             return {};
         }
 
-        auto operand2node = std::make_unique<csgjscpp::CSGNode>( operand2[ 0 ]->m_polygons );
-        for( int i = 1; i < operand2.size(); i++ ) {
-            auto o = csgjscpp::CSGNode( operand2[ i ]->m_polygons );
-            operand2node = std::unique_ptr<csgjscpp::CSGNode>( csgjscpp::csg_union( operand2node.get(), &o ) );
+        csg::details::CSGNode operand2node;
+        for(const auto & operand : operand2) {
+            auto n = csg::details::CSGNode( operand->m_polygons );
+            csg::details::UnionInplace( &operand2node, &n );
         }
 
-        for( auto& o1: operand1 ) {
-            auto resultNode = std::make_unique<csgjscpp::CSGNode>( o1->m_polygons );
-            resultNode = std::unique_ptr<csgjscpp::CSGNode>( csgjscpp::csg_intersect( resultNode.get(), operand2node.get() ) );
-            o1->m_polygons = resultNode->allpolygons();
+        for( auto& operand: operand1 ) {
+            auto resultNode = std::make_unique<csg::details::CSGNode>( operand->m_polygons );
+            csg::details::IntersectionInplace( resultNode.get(), &operand2node );
+            operand->m_polygons = resultNode->allpolygons();
         }
-
-        //this->RemoveEmptyOperands( &operand1 );
 
         return operand1;
     }
     inline std::vector<TMesh> ComputeDifference( const std::vector<TMesh>& operand1, const std::vector<TMesh>& operand2 ) {
-        //return operand1;
-        //this->RemoveEmptyOperands( &operand1, &operand2 );
         if( operand1.empty() || operand2.empty() ) {
             return operand1;
         }
 
-        std::vector<csgjscpp::CSGNode> operand2nodes;
+        std::vector<csg::details::CSGNode> operand2nodes;
         operand2nodes.reserve( operand2.size() );
         for( const auto& o: operand2 ) {
             operand2nodes.emplace_back( o->m_polygons );
         }
 
         for( auto& o1: operand1 ) {
-            auto resultNode = std::make_unique<csgjscpp::CSGNode>( o1->m_polygons );
+            auto resultNode = std::make_unique<csg::details::CSGNode>( o1->m_polygons );
             for( const auto& o2: operand2nodes ) {
-                csgjscpp::csg_subtract_inplace( resultNode.get(), &o2 );
+                csg::details::DifferenceInplace( resultNode.get(), &o2 );
             }
-            o1->m_polygons = std::move( resultNode->allpolygons() );
+            o1->m_polygons = resultNode->allpolygons();
         }
-
-        //this->RemoveEmptyOperands( &operand1 );
 
         return operand1;
-    }
-
-private:
-    inline void RemoveEmptyOperands( std::vector<TMesh>* operand1, std::vector<TMesh>* operand2 ) {
-        this->RemoveEmptyOperands( operand1 );
-        this->RemoveEmptyOperands( operand2 );
-    }
-    inline void RemoveEmptyOperands( std::vector<TMesh>* operand ) {
-        for( int i = 0; i < operand->size(); i++ ) {
-            if( operand->at( i )->m_polygons.empty() ) {
-                operand->erase( operand->begin() + i );
-                i--;
-            }
-        }
     }
 };
