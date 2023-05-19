@@ -8,11 +8,10 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/matrix.hpp>
 
-#include <ifcpp/Model/BuildingModel.h>
-#include <ifcpp/Reader/ReaderSTEP.h>
+#include <spdlog/spdlog.h>
 
 #include "Adapter.h"
-#include <ifcpp/Geometry/GeometryGenerator.h>
+#include <ifcpp/ModelLoader.h>
 
 
 const char* vertexSource =
@@ -61,47 +60,20 @@ const char* fragmentSource =
 bool wireframe = false;
 
 int main() {
-    // Read IFC, generate geometry and VAO
-    auto ifcModel = std::make_shared<BuildingModel>();
-    auto reader = std::make_shared<ReaderSTEP>();
-    auto parsingStartTime = std::chrono::high_resolution_clock::now();
-    reader->loadModelFromFile( "example.ifc", ifcModel );
-    auto parsingFinishTime = std::chrono::high_resolution_clock::now();
-    auto parsingTime = parsingFinishTime - parsingStartTime;
-    std::cout << "parsing: " << std::chrono::duration_cast<std::chrono::milliseconds>( parsingTime ).count() << " milliseconds ("
-              << std::chrono::duration_cast<std::chrono::seconds>( parsingTime ).count() << " seconds)" << std::endl;
+    auto onProgressChanged = [] ( double progress ) {
+        spdlog::info( "progress changed: {}", progress );
+    };
 
+    auto parameters = std::make_shared<ifcpp::Parameters>( ifcpp::Parameters { 1e-6, 14, 5, 1000, 4 } );
 
-    auto parameters = std::make_shared<ifcpp::Parameters>( ifcpp::Parameters {
-        1e-6,
-        14,
-        5,
-        1000,
-        4,
-    } );
-    auto adapter = std::make_shared<Adapter>();
-    auto styleConverter = std::make_shared<ifcpp::StyleConverter>();
-    auto geomUtils = std::make_shared<ifcpp::GeomUtils<csg::Vector>>( parameters );
-    auto primitivesConverter = std::make_shared<ifcpp::PrimitiveTypesConverter<csg::Vector>>();
-    auto splineConverter = std::make_shared<ifcpp::SplineConverter<csg::Vector>>( primitivesConverter, geomUtils, parameters );
-    auto curveConverter = std::make_shared<ifcpp::CurveConverter<csg::Vector>>( primitivesConverter, geomUtils, splineConverter, parameters );
-    auto extruder = std::make_shared<ifcpp::Extruder<csg::Vector>>( geomUtils, parameters );
-    auto profileConverter = std::make_shared<ifcpp::ProfileConverter<csg::Vector>>( curveConverter, geomUtils, primitivesConverter, parameters );
-    auto geometryConverter = std::make_shared<ifcpp::GeometryConverter<csg::Vector>>( curveConverter, primitivesConverter, splineConverter, geomUtils, extruder,
-                                                                                      profileConverter, parameters );
-    auto solidConverter = std::make_shared<ifcpp::SolidConverter<Adapter>>( primitivesConverter, curveConverter, profileConverter, extruder, geometryConverter,
-                                                                            adapter, geomUtils, styleConverter, parameters );
-    auto geometryGenerator =
-        std::make_shared<ifcpp::GeometryGenerator<Adapter>>( ifcModel, adapter, curveConverter, extruder, geometryConverter, geomUtils, primitivesConverter,
-                                                             profileConverter, solidConverter, splineConverter, styleConverter, parameters );
+    auto processingStartTime = std::chrono::high_resolution_clock::now();
+    auto entities = ifcpp::LoadModel<Adapter>( "example.ifc", parameters, onProgressChanged );
+    auto processingFinishTime = std::chrono::high_resolution_clock::now();
 
-    // auto generator = std::make_shared<ifcpp::GeometryGenerator<ifcpp::Adapter>>(ifcModel, adapter);
-    auto generationStartTime = std::chrono::high_resolution_clock::now();
-    auto entities = geometryGenerator->GenerateGeometry();
-    auto generationFinishTime = std::chrono::high_resolution_clock::now();
-    auto generationTime = generationFinishTime - generationStartTime;
-    std::cout << "geometry generation: " << std::chrono::duration_cast<std::chrono::milliseconds>( generationTime ).count() << " milliseconds ("
-              << std::chrono::duration_cast<std::chrono::seconds>( generationTime ).count() << " seconds)" << std::endl;
+    auto processingTime = processingFinishTime - processingStartTime;
+    auto processingTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>( processingTime ).count();
+    auto processingTimeSec = std::chrono::duration_cast<std::chrono::seconds>( processingTime ).count();
+    spdlog::info( "model processing: {} milliseconds ({} seconds)", processingTimeMs, processingTimeSec );
 
     glm::vec<3, double, glm::defaultp> center( 0, 0, 0 );
     std::vector<float> vbo;

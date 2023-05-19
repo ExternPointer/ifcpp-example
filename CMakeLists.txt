@@ -2,10 +2,19 @@ cmake_minimum_required( VERSION 3.20 )
 project( ifcpp-example )
 set( CMAKE_CXX_STANDARD 23 )
 
+if( APPLE )
+    set( CMAKE_MACOSX_RPATH ON )
+endif()
+
+if( MSVC )
+    string( APPEND CMAKE_CXX_FLAGS " /Zc:__cplusplus /MP" )
+endif()
+
 add_subdirectory( third_party/glew-cmake )
 add_subdirectory( third_party/glfw )
 add_subdirectory( third_party/glm )
 add_subdirectory( third_party/ifcpp )
+add_subdirectory( third_party/spdlog )
 
 add_definitions( -DGLEW_STATIC )
 add_definitions( -DIFCQUERY_STATIC_LIB )
@@ -25,4 +34,4 @@ set( HEADERS
         src/Adapter.h )
 
 add_executable( ${PROJECT_NAME} ${SOURCES} )
-target_link_libraries( ${PROJECT_NAME} PRIVATE OpenGL::GL ifcpp glfw libglew_static glm )
+target_link_libraries( ${PROJECT_NAME} PRIVATE OpenGL::GL ifcpp glfw libglew_static glm spdlog::spdlog_header_only )
