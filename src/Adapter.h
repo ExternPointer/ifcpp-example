@@ -43,23 +43,23 @@ public:
             // WTF???
             return {};
         }
-        return csg::Polygon( csg::Polygon( { vertices[ indices[ 0 ] ], vertices[ indices[ 1 ] ], vertices[ indices[ 2 ] ] } ) );
+        return csg::Polygon( { vertices[ indices[ 0 ] ], vertices[ indices[ 1 ] ], vertices[ indices[ 2 ] ] } );
     }
     inline TPolyline CreatePolyline( const std::vector<TVector>& vertices ) {
-        return std::make_shared<Polyline>( vertices );
+        return std::make_shared<Polyline>( Polyline { vertices } );
     }
     inline TMesh CreateMesh( const std::vector<TTriangle>& triangles ) {
-        return std::make_shared<Mesh>( triangles );
+        return std::make_shared<Mesh>( Mesh { triangles } );
     }
     inline TPolyline CreatePolyline( const TPolyline& other ) {
-        return std::make_shared<Polyline>( other->m_points, other->m_color );
+        return std::make_shared<Polyline>( Polyline { other->m_points, other->m_color } );
     }
     inline TMesh CreateMesh( const TMesh& other ) {
-        return std::make_shared<Mesh>( other->m_polygons, other->m_color );
+        return std::make_shared<Mesh>( Mesh { other->m_polygons, other->m_color } );
     }
     inline TEntity CreateEntity( const std::shared_ptr<IFC4X3::IfcObjectDefinition>& ifcObject, const std::vector<TMesh>& meshes,
                                  const std::vector<TPolyline>& polylines ) {
-        return std::make_shared<Entity>( ifcObject, meshes, polylines );
+        return std::make_shared<Entity>( Entity{ ifcObject, meshes, polylines } );
     }
 
     inline void Transform( std::vector<TMesh>* meshes, const ifcpp::Matrix<TVector>& matrix ) {
@@ -68,7 +68,12 @@ public:
                 for( auto& v: t.vertices ) {
                     matrix.Transform( &v );
                 }
-                t = csg::Polygon( std::move( t.vertices ) );
+                t.plane = csg::Plane( t.vertices );
+            }
+            for( ssize_t i = m->m_polygons.size() - 1; i >= 0; i-- ) {
+                if( !m->m_polygons[ i ].plane.IsValid() ) {
+                    m->m_polygons.erase( m->m_polygons.begin() + i );
+                }
             }
         }
     }
@@ -230,7 +235,7 @@ public:
         }
 
         // TODO: Fix styles (m_color) when we have several operand1 meshes
-        TMesh result = std::make_shared<Mesh>( resultNode.allpolygons(), operand1[ 0 ]->m_color );
+        TMesh result = std::make_shared<Mesh>( Mesh { resultNode.allpolygons(), operand1[ 0 ]->m_color } );
         return { result };
     }
     inline std::vector<TMesh> ComputeIntersection( const std::vector<TMesh>& operand1, const std::vector<TMesh>& operand2 ) {

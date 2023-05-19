@@ -108,9 +108,29 @@ struct Plane {
 
     Plane() = default;
 
-    Plane( const Vector& a, const Vector& b, const Vector& c ) {
-        this->normal = Normalized( Cross( b - a, c - a ) );
-        this->w = Dot( this->normal, a );
+    explicit Plane( const std::vector<Vector>& points ) {
+        if( points.empty() ) {
+            return;
+        }
+        double maxLen = 0;
+        for( int i = 0; i < points.size(); i++ ) {
+            for( int j = i + 1; j < points.size(); j++ ) {
+                for( int k = j + 1; k < points.size(); k++ ) {
+                    auto n = Cross( points[ j ] - points[ i ], points[ k ] - points[ i ] );
+                    auto l = LengthSquared( n );
+                    if( l > maxLen ) {
+                        maxLen = l;
+                        this->normal = n;
+                    }
+                    if( l > TOLERANCE ) {
+                        goto BREAK;
+                    }
+                }
+            }
+        }
+    BREAK:
+        this->normal = Normalized( this->normal );
+        this->w = Dot( this->normal, points[ 0 ] );
     }
 
     [[nodiscard]] inline bool IsValid() const {
@@ -136,14 +156,14 @@ struct Polygon {
 
     Polygon() = default;
 
-    Polygon( Polygon&& other ) {
-        this->vertices = std::move( other.vertices );
-        this->plane = other.plane;
+    Polygon( Polygon&& other ) noexcept
+        : vertices( std::move( other.vertices ) )
+        , plane( other.plane ) {
     }
 
     Polygon( const Polygon& other ) = default;
 
-    Polygon& operator=( Polygon&& other ) {
+    Polygon& operator=( Polygon&& other ) noexcept {
         this->vertices = std::move( other.vertices );
         this->plane = other.plane;
         return *this;
@@ -153,7 +173,7 @@ struct Polygon {
 
     explicit Polygon( const std::vector<Vector>& list )
         : vertices( list )
-        , plane( vertices[ 0 ], vertices[ 1 ], vertices[ 2 ] ) {
+        , plane( list ) {
     }
 
     Polygon( const std::vector<Vector>& list, const Plane& plane )
@@ -228,9 +248,9 @@ namespace details {
                     }
                 }
             }
-            if( f.size() >= 3 )
+            if( f.size() >= 3 && Plane( f ).IsValid() )
                 front.emplace_back( f, poly.plane );
-            if( b.size() >= 3 )
+            if( b.size() >= 3 && Plane( b ).IsValid() )
                 back.emplace_back( b, poly.plane );
             break;
         }
