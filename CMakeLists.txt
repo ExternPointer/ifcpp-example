@@ -31,7 +31,8 @@ set( SOURCES
 set( HEADERS
         src/csgjs.h
         src/earcut.hpp
-        src/Adapter.h )
+        src/Adapter.h
+        src/Engine.h )
 
-add_executable( ${PROJECT_NAME} ${SOURCES} )
+add_executable( ${PROJECT_NAME} ${SOURCES} ${HEADERS} )
 target_link_libraries( ${PROJECT_NAME} PRIVATE OpenGL::GL ifcpp glfw libglew_static glm spdlog::spdlog_header_only )
