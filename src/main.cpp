@@ -1,3 +1,5 @@
+#define CSG_FIX_POLYGON_ORIENTATIONS_EXPERIMENTAL
+
 #include <chrono>
 #include <iostream>
 #include <spdlog/spdlog.h>

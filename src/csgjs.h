@@ -443,6 +443,7 @@ namespace details {
         }
 
         inline void FixPolygonOrientations() {
+#ifdef CSG_FIX_POLYGON_ORIENTATIONS_EXPERIMENTAL
             std::deque<CSGNode*> nodes;
             nodes.push_back( this );
             while( !nodes.empty() ) {
@@ -466,6 +467,7 @@ namespace details {
                     nodes.push_back( me->back );
                 }
             }
+#endif
         }
 
         [[nodiscard]] inline std::vector<Polygon> clippolygons( const std::vector<Polygon>& ilist ) const {
