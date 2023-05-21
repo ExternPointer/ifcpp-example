@@ -442,6 +442,32 @@ namespace details {
             }
         }
 
+        inline void FixPolygonOrientations() {
+            std::deque<CSGNode*> nodes;
+            nodes.push_back( this );
+            while( !nodes.empty() ) {
+                CSGNode* me = nodes.front();
+                nodes.pop_front();
+
+                if( me->front && !me->back ) {
+                    std::swap( me->front, me->back );
+                    me->plane.Flip();
+                    for( auto& p: me->polygons ) {
+                        if( Dot( p.plane.normal, me->plane.normal ) < 0 ) {
+                            p.Flip();
+                        }
+                    }
+                }
+
+                if( me->front ) {
+                    nodes.push_back( me->front );
+                }
+                if( me->back ) {
+                    nodes.push_back( me->back );
+                }
+            }
+        }
+
         [[nodiscard]] inline std::vector<Polygon> clippolygons( const std::vector<Polygon>& ilist ) const {
             std::vector<Polygon> result;
 
@@ -529,6 +555,7 @@ namespace details {
             return;
         }
         CSGNode* b = b1->Clone();
+        b->FixPolygonOrientations();
         a->Invert();
         a->ClipTo( b );
         b->ClipTo( a );
