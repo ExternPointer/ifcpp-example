@@ -34,7 +34,7 @@ int main() {
 std::vector<std::shared_ptr<Entity>> LoadModel( const std::string& filePath ) {
     auto onProgressChanged = []( double progress ) { spdlog::info( "progress changed: {}", progress ); };
 
-    auto parameters = std::make_shared<ifcpp::Parameters>( ifcpp::Parameters { 1e-6, 14, 5, 1000, 4 } );
+    auto parameters = std::make_shared<ifcpp::Parameters>( ifcpp::Parameters { 1e-6, 14, 5, 10000, 4 } );
 
     auto processingStartTime = std::chrono::high_resolution_clock::now();
     auto entities = ifcpp::LoadModel<Adapter>( filePath, parameters, onProgressChanged );
