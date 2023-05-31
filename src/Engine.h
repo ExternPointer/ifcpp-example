@@ -193,6 +193,13 @@ void InitEngine() {
     glClearColor( 0.07f, 0.13f, 0.17f, 1.0f );
     glEnable( GL_DEPTH_TEST );
     glEnable( GL_CULL_FACE );
+
+    // Set callback to key Z (switch normal/wireframe mode)
+    glfwSetKeyCallback( window, []( GLFWwindow* window, int key, int scancode, int action, int mods ) {
+        if( key == GLFW_KEY_Z && action == GLFW_PRESS ) {
+            wireframeMode = !wireframeMode;
+        }
+    } );
 }
 
 void Update() {
@@ -232,11 +239,6 @@ void Update() {
     upDir = verticalRotation * glm::vec4( 0, 0, 1, 0 );
     viewDir = glm::normalize( glm::cross( upDir, rightDir ) );
 
-    glfwSetKeyCallback( window, []( GLFWwindow* window, int key, int scancode, int action, int mods ) {
-        if( key == GLFW_KEY_Z && action == GLFW_PRESS ) {
-            wireframeMode = !wireframeMode;
-        }
-    } );
     if( glfwGetKey( window, GLFW_KEY_W ) ) {
         cameraPosition += viewDir * moveSpeed * deltaTime;
     }
