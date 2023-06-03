@@ -1,13 +1,13 @@
 #pragma once
 
-#include <memory>
+#include "Adapter.h"
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <memory>
 #include <spdlog/spdlog.h>
-#include "Adapter.h"
 
 
 const char* vertexSource =
@@ -53,6 +53,24 @@ const char* fragmentSource =
     "   FragColor = v_color;                                                                                                                                \n"
     "}                                                                                                                                                      \n";
 
+const char* linesVertexSource =
+    "#version 330                                                                                                                                           \n"
+    "layout ( location = 0 ) in vec3 a_position;                                                                                                            \n"
+    "layout ( location = 1 ) in vec4 a_vertex_color;                                                                                                        \n"
+    "uniform mat4 m_transform;                                                                                                                              \n"
+    "out vec4 v_vertex_color;                                                                                                                               \n"
+    "void main() {                                                                                                                                          \n"
+    "   v_vertex_color = a_vertex_color;                                                                                                                    \n"
+    "   gl_Position = m_transform * vec4( a_position, 1 );                                                                                                  \n"
+    "}                                                                                                                                                      \n";
+
+const char* linesFragmentSource =
+    "#version 330                                                                                                                                           \n"
+    "in vec4 v_vertex_color;                                                                                                                                \n"
+    "out vec4 FragColor;                                                                                                                                    \n"
+    "void main() {                                                                                                                                          \n"
+    "   FragColor = v_vertex_color;                                                                                                                         \n"
+    "}                                                                                                                                                      \n";
 
 
 const float moveSpeed = 5;
@@ -65,8 +83,14 @@ unsigned int cboId;
 unsigned int iboId;
 int iboSize;
 int iboTransparentStartIdx;
+unsigned int linesVboId;
+unsigned int linesCboId;
+unsigned int linesIboId;
+int linesIboSize;
 unsigned int program;
+unsigned int linesProgram;
 bool wireframeMode = false;
+bool drawPolylines = true;
 
 glm::vec3 cameraPosition;
 float horizontalAngle;
@@ -76,13 +100,15 @@ glm::vec3 upDir;
 glm::vec3 rightDir;
 
 
-
 void SendToGpu( const std::vector<std::shared_ptr<Entity>>& entities ) {
     glm::vec<3, double, glm::defaultp> center( 0, 0, 0 );
     std::vector<float> vbo;
     std::vector<unsigned int> ibo;
     std::vector<unsigned int> iboTransparent;
     std::vector<unsigned int> cbo;
+    std::vector<float> linesVbo;
+    std::vector<unsigned int> linesIbo;
+    std::vector<unsigned int> linesCbo;
     for( auto& e: entities ) {
         for( auto& m: e->m_meshes ) {
             if( m->m_color == 0 ) {
@@ -90,11 +116,11 @@ void SendToGpu( const std::vector<std::shared_ptr<Entity>>& entities ) {
                 continue;
             }
             bool isTransparent = ( m->m_color >> 24 ) != 255;
+            auto targetIbo = &ibo;
+            if( isTransparent ) {
+                targetIbo = &iboTransparent;
+            }
             for( const auto& p: m->m_polygons ) {
-                auto targetIbo = &ibo;
-                if( isTransparent ) {
-                    targetIbo = &iboTransparent;
-                }
                 for( int i = 1; i < p.vertices.size() - 1; i++ ) {
                     targetIbo->push_back( vbo.size() / 3 );
                     targetIbo->push_back( i + vbo.size() / 3 );
@@ -109,10 +135,23 @@ void SendToGpu( const std::vector<std::shared_ptr<Entity>>& entities ) {
                 }
             }
         }
+        for( const auto& p: e->m_polylines ) {
+            for( int i = 1; i < p->m_points.size(); i++ ) {
+                linesIbo.push_back( i - 1 + linesVbo.size() / 3 );
+                linesIbo.push_back( i + linesVbo.size() / 3 );
+            }
+            for( const auto& v: p->m_points ) {
+                linesVbo.push_back( (float)v.x );
+                linesVbo.push_back( (float)v.y );
+                linesVbo.push_back( (float)v.z );
+                linesCbo.push_back( p->m_color );
+            }
+        }
     }
     iboTransparentStartIdx = (int)ibo.size();
     std::copy( iboTransparent.begin(), iboTransparent.end(), std::back_inserter( ibo ) );
     iboSize = (int)ibo.size();
+    linesIboSize = (int)linesIbo.size();
 
     center = center / ( (double)vbo.size() / 3 );
 
@@ -124,18 +163,31 @@ void SendToGpu( const std::vector<std::shared_ptr<Entity>>& entities ) {
     glDeleteBuffers( 1, &vboId );
     glDeleteBuffers( 1, &cboId );
     glDeleteBuffers( 1, &iboId );
+    glDeleteBuffers( 1, &linesVboId );
+    glDeleteBuffers( 1, &linesCboId );
+    glDeleteBuffers( 1, &linesIboId );
     glGenBuffers( 1, &vboId );
     glGenBuffers( 1, &cboId );
     glGenBuffers( 1, &iboId );
+    glGenBuffers( 1, &linesVboId );
+    glGenBuffers( 1, &linesCboId );
+    glGenBuffers( 1, &linesIboId );
 
     glBindBuffer( GL_ARRAY_BUFFER, vboId );
     glBufferData( GL_ARRAY_BUFFER, (int)( sizeof( float ) * vbo.size() ), vbo.data(), GL_STATIC_DRAW );
-    glBindBuffer( GL_ARRAY_BUFFER, 0 );
     glBindBuffer( GL_ARRAY_BUFFER, cboId );
     glBufferData( GL_ARRAY_BUFFER, (int)( sizeof( unsigned int ) * cbo.size() ), cbo.data(), GL_STATIC_DRAW );
-    glBindBuffer( GL_ARRAY_BUFFER, 0 );
     glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, iboId );
     glBufferData( GL_ELEMENT_ARRAY_BUFFER, (int)( sizeof( unsigned int ) * ibo.size() ), ibo.data(), GL_STATIC_DRAW );
+
+    glBindBuffer( GL_ARRAY_BUFFER, linesVboId );
+    glBufferData( GL_ARRAY_BUFFER, (int)( sizeof( float ) * linesVbo.size() ), linesVbo.data(), GL_STATIC_DRAW );
+    glBindBuffer( GL_ARRAY_BUFFER, linesCboId );
+    glBufferData( GL_ARRAY_BUFFER, (int)( sizeof( unsigned int ) * linesCbo.size() ), linesCbo.data(), GL_STATIC_DRAW );
+    glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, linesIboId );
+    glBufferData( GL_ELEMENT_ARRAY_BUFFER, (int)( sizeof( unsigned int ) * linesIbo.size() ), linesIbo.data(), GL_STATIC_DRAW );
+
+    glBindBuffer( GL_ARRAY_BUFFER, 0 );
     glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
 }
 
@@ -162,42 +214,68 @@ void InitEngine() {
     glfwSetInputMode( window, GLFW_STICKY_KEYS, GL_TRUE );
 
     // Compile shaders
-    GLuint vertex = glCreateShader( GL_VERTEX_SHADER );
-    glShaderSource( vertex, 1, &vertexSource, nullptr );
-    glCompileShader( vertex );
-    GLuint geometry = glCreateShader( GL_GEOMETRY_SHADER );
-    glShaderSource( geometry, 1, &geometrySource, nullptr );
-    glCompileShader( geometry );
-    GLuint fragment = glCreateShader( GL_FRAGMENT_SHADER );
-    glShaderSource( fragment, 1, &fragmentSource, nullptr );
-    glCompileShader( fragment );
-    program = glCreateProgram();
-    glAttachShader( program, vertex );
-    glAttachShader( program, geometry );
-    glAttachShader( program, fragment );
-    glLinkProgram( program );
-    glDetachShader( program, vertex );
-    glDetachShader( program, geometry );
-    glDetachShader( program, fragment );
-    glDeleteShader( geometry );
-    glDeleteShader( vertex );
-    glDeleteShader( fragment );
+    {
+        GLuint vertex = glCreateShader( GL_VERTEX_SHADER );
+        glShaderSource( vertex, 1, &vertexSource, nullptr );
+        glCompileShader( vertex );
+        GLuint geometry = glCreateShader( GL_GEOMETRY_SHADER );
+        glShaderSource( geometry, 1, &geometrySource, nullptr );
+        glCompileShader( geometry );
+        GLuint fragment = glCreateShader( GL_FRAGMENT_SHADER );
+        glShaderSource( fragment, 1, &fragmentSource, nullptr );
+        glCompileShader( fragment );
+        program = glCreateProgram();
+        glAttachShader( program, vertex );
+        glAttachShader( program, geometry );
+        glAttachShader( program, fragment );
+        glLinkProgram( program );
+        glDetachShader( program, vertex );
+        glDetachShader( program, geometry );
+        glDetachShader( program, fragment );
+        glDeleteShader( geometry );
+        glDeleteShader( vertex );
+        glDeleteShader( fragment );
+    }
+    {
+        GLuint vertex = glCreateShader( GL_VERTEX_SHADER );
+        glShaderSource( vertex, 1, &linesVertexSource, nullptr );
+        glCompileShader( vertex );
+        GLuint fragment = glCreateShader( GL_FRAGMENT_SHADER );
+        glShaderSource( fragment, 1, &linesFragmentSource, nullptr );
+        glCompileShader( fragment );
+        linesProgram = glCreateProgram();
+        glAttachShader( linesProgram, vertex );
+        glAttachShader( linesProgram, fragment );
+        glLinkProgram( linesProgram );
+        glDetachShader( linesProgram, vertex );
+        glDetachShader( linesProgram, fragment );
+        glDeleteShader( vertex );
+        glDeleteShader( fragment );
+    }
 
     // Create buffers
     glGenVertexArrays( 1, &vaoId );
     glGenBuffers( 1, &vboId );
     glGenBuffers( 1, &cboId );
     glGenBuffers( 1, &iboId );
+    glGenBuffers( 1, &linesVboId );
+    glGenBuffers( 1, &linesCboId );
+    glGenBuffers( 1, &linesIboId );
 
     // Set clear color, enable depth testing and culling
-    glClearColor( 0.07f, 0.13f, 0.17f, 1.0f );
+    glClearColor( 0.9f, 0.9f, 0.9f, 1.0f );
     glEnable( GL_DEPTH_TEST );
     glEnable( GL_CULL_FACE );
 
-    // Set callback to key Z (switch normal/wireframe mode)
+
     glfwSetKeyCallback( window, []( GLFWwindow* window, int key, int scancode, int action, int mods ) {
+        // Set callback to key Z (switch normal/wireframe mode)
         if( key == GLFW_KEY_Z && action == GLFW_PRESS ) {
             wireframeMode = !wireframeMode;
+        }
+        // Set callback to key X (show/hide polylines)
+        if( key == GLFW_KEY_X && action == GLFW_PRESS ) {
+            drawPolylines = !drawPolylines;
         }
     } );
 }
@@ -226,7 +304,7 @@ void Update() {
             verticalAngle = (float)M_PI_2;
         }
     }
-    if( glfwGetKey( window, GLFW_KEY_DOWN) ) {
+    if( glfwGetKey( window, GLFW_KEY_DOWN ) ) {
         verticalAngle -= rotateViewSpeed * deltaTime;
         if( verticalAngle <= -(float)M_PI_2 ) {
             verticalAngle = -(float)M_PI_2;
@@ -267,7 +345,7 @@ void Render( int width, int height ) {
 
     auto projectionMatrix = glm::perspective( glm::radians( 60.0f ), (float)width / (float)height, 0.1f, 500.0f );
 
-    auto viewMatrix = glm::lookAt( cameraPosition, cameraPosition + viewDir, upDir);
+    auto viewMatrix = glm::lookAt( cameraPosition, cameraPosition + viewDir, upDir );
 
     auto mvp = projectionMatrix * viewMatrix;
 
@@ -296,4 +374,31 @@ void Render( int width, int height ) {
     glDisableVertexAttribArray( 1 );
     glBindVertexArray( 0 );
     glUseProgram( 0 );
+
+
+    if( drawPolylines ) {
+        glUseProgram( linesProgram );
+        glUniformMatrix4fv( glGetUniformLocation( program, "m_transform" ), 1, GL_FALSE, glm::value_ptr( mvp ) );
+
+        glBindVertexArray( vaoId );
+        glEnableVertexAttribArray( 0 );
+        glEnableVertexAttribArray( 1 );
+
+        glBindBuffer( GL_ARRAY_BUFFER, linesVboId );
+        glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, 0, nullptr );
+        glBindBuffer( GL_ARRAY_BUFFER, linesCboId );
+        glVertexAttribPointer( 1, 4, GL_UNSIGNED_BYTE, GL_TRUE, 0, nullptr );
+        glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, linesIboId );
+
+        glDepthFunc( GL_LEQUAL );
+        glDrawElements( GL_LINES, linesIboSize, GL_UNSIGNED_INT, nullptr );
+        glDepthFunc( GL_LESS );
+
+        glBindBuffer( GL_ARRAY_BUFFER, 0 );
+        glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
+        glDisableVertexAttribArray( 0 );
+        glDisableVertexAttribArray( 1 );
+        glBindVertexArray( 0 );
+        glUseProgram( 0 );
+    }
 }
