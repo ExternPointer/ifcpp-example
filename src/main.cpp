@@ -6,6 +6,8 @@
 #include <ifcpp/ModelLoader.h>
 #include "Engine.h"
 
+using namespace IfcppExample;
+
 
 std::vector<std::shared_ptr<Entity>> LoadModel( const std::string& filePath );
 

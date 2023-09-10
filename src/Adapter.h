@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <memory>
 
 #include "csgjs.h"
 #include "earcut.hpp"
@@ -8,6 +9,9 @@
 #include "ifcpp/Geometry/StyleConverter.h"
 #include "ifcpp/Geometry/VectorAdapter.h"
 #include "ifcpp/Ifc/IfcObjectDefinition.h"
+
+
+namespace IfcppExample {
 
 
 class Polyline {
@@ -59,7 +63,7 @@ public:
     }
     inline TEntity CreateEntity( const std::shared_ptr<IFC4X3::IfcObjectDefinition>& ifcObject, const std::vector<TMesh>& meshes,
                                  const std::vector<TPolyline>& polylines ) {
-        return std::make_shared<Entity>( Entity{ ifcObject, meshes, polylines } );
+        return std::make_shared<Entity>( Entity { ifcObject, meshes, polylines } );
     }
 
     inline void Transform( std::vector<TMesh>* meshes, const ifcpp::Matrix<TVector>& matrix ) {
@@ -70,7 +74,7 @@ public:
                 }
                 t.plane = csg::Plane( t.vertices );
             }
-            for( ssize_t i = m->m_polygons.size() - 1; i >= 0; i-- ) {
+            for( long long int i = m->m_polygons.size() - 1; i >= 0; i-- ) {
                 if( !m->m_polygons[ i ].plane.IsValid() ) {
                     m->m_polygons.erase( m->m_polygons.begin() + i );
                 }
@@ -278,4 +282,6 @@ public:
 
         return operand1;
     }
+};
+
 };
