@@ -10,6 +10,9 @@
 #include <spdlog/spdlog.h>
 
 
+namespace IfcppExample {
+
+
 const char* vertexSource =
     "#version 330                                                                                                                                           \n"
     "layout ( location = 0 ) in vec3 a_position;                                                                                                            \n"
@@ -402,3 +405,5 @@ void Render( int width, int height ) {
         glUseProgram( 0 );
     }
 }
+
+};
